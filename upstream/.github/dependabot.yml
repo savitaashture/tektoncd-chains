@@ -1,0 +1,26 @@
+version: 2
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    labels:
+    - "ok-to-test"
+    groups:
+      all:
+        patterns:
+          - "*"
+    labels:
+    - "ok-to-test"
+    - "dependencies"
+    - "release-note-none"
+    - "kind/misc"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+    - "ok-to-test"
+    - "dependencies"
+    - "release-note-none"
+    - "kind/misc"
