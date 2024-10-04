@@ -1,0 +1,17 @@
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Component
+metadata:
+  annotations:
+    build.appstudio.openshift.io/pipeline: '{"name":"docker-build","bundle":"latest"}'
+  name: tektoncd-chains-main-controller
+spec:
+  componentName: controller
+  application: tektoncd-chains-main
+  build-nudges-ref:
+  - operator-main-bundle
+  source:
+    git:
+      url: https://github.com/openshift-pipelines/tektoncd-chains
+      dockerfileUrl: openshift/dockerfiles/controller.Dockerfile
+      revision: main
