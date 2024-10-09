@@ -10,8 +10,8 @@ metadata:
     pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch
       == "main" &&
       ("upstream/***".pathChanged() || "openshift/patches/***".pathChanged() || "openshift/rpms/***".pathChanged() ||
-      ".tekton/controller-pull-request.yaml".pathChanged() ||
-      ".tekton/controller-push.yaml".pathChanged() ||
+      "openshift/dockerfiles/controller.Dockerfile".pathChanged() ||
+      ".tekton/tektoncd-chains-main-controller-pull-request.yaml".pathChanged() ||
       ".tekton/docker-build.yaml".pathChanged())
   creationTimestamp: null
   labels:
