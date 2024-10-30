@@ -5,7 +5,7 @@ FROM $GO_BUILDER AS builder
 
 WORKDIR /go/src/github.com/tektoncd/chains
 COPY upstream .
-COPY patches patches/
+COPY .konflux/patches patches/
 RUN set -e; for f in patches/*.patch; do echo ${f}; [[ -f ${f} ]] || continue; git apply ${f}; done
 COPY head HEAD
 ENV GODEBUG="http2server=0"
