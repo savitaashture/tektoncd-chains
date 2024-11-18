@@ -1,0 +1,178 @@
+diff --git a/go.mod b/go.mod
+index d636b6f618ad..b08a322c5238 100644
+--- a/go.mod
++++ b/go.mod
+@@ -1,6 +1,6 @@
+ module github.com/tektoncd/chains
+ 
+-go 1.22.8
++go 1.22
+ 
+ require (
+ 	cloud.google.com/go/compute/metadata v0.5.2
+diff --git a/vendor/modules.txt b/vendor/modules.txt
+index 67da8e46fef5..e09baa67ac1e 100644
+--- a/vendor/modules.txt
++++ b/vendor/modules.txt
+@@ -201,7 +201,7 @@ github.com/AzureAD/microsoft-authentication-library-for-go/apps/public
+ github.com/BurntSushi/toml
+ github.com/BurntSushi/toml/internal
+ # github.com/Crocmagnon/fatcontext v0.5.2
+-## explicit; go 1.22.0
++## explicit; go 1.22
+ github.com/Crocmagnon/fatcontext/pkg/analyzer
+ # github.com/Djarvur/go-err113 v0.0.0-20210108212216-aea10b59be24
+ ## explicit; go 1.13
+@@ -520,12 +520,12 @@ github.com/breml/bidichk/pkg/bidichk
+ ## explicit; go 1.20
+ github.com/breml/errchkjson
+ # github.com/buildkite/agent/v3 v3.81.0
+-## explicit; go 1.22.6
++## explicit; go 1.22
+ github.com/buildkite/agent/v3/api
+ github.com/buildkite/agent/v3/logger
+ github.com/buildkite/agent/v3/version
+ # github.com/buildkite/go-pipeline v0.13.1
+-## explicit; go 1.22.6
++## explicit; go 1.22
+ github.com/buildkite/go-pipeline
+ github.com/buildkite/go-pipeline/internal/env
+ github.com/buildkite/go-pipeline/ordered
+@@ -946,7 +946,7 @@ github.com/golangci/gofmt/gofmt
+ github.com/golangci/gofmt/gofmt/internal/diff
+ github.com/golangci/gofmt/goimports
+ # github.com/golangci/golangci-lint v1.61.0
+-## explicit; go 1.22.1
++## explicit; go 1.22
+ github.com/golangci/golangci-lint/cmd/golangci-lint
+ github.com/golangci/golangci-lint/internal/cache
+ github.com/golangci/golangci-lint/internal/errorutil
+@@ -1481,7 +1481,7 @@ github.com/leonklingele/grouper/pkg/analyzer/imports
+ github.com/leonklingele/grouper/pkg/analyzer/types
+ github.com/leonklingele/grouper/pkg/analyzer/vars
+ # github.com/letsencrypt/boulder v0.0.0-20240620165639-de9c06129bec
+-## explicit; go 1.22.0
++## explicit; go 1.22
+ github.com/letsencrypt/boulder/core
+ github.com/letsencrypt/boulder/goodkey
+ github.com/letsencrypt/boulder/identifier
+@@ -1587,7 +1587,7 @@ github.com/nunnatsa/ginkgolinter/version
+ ## explicit
+ github.com/oklog/ulid
+ # github.com/oleiade/reflections v1.1.0
+-## explicit; go 1.22.6
++## explicit; go 1.22
+ github.com/oleiade/reflections
+ # github.com/olekukonko/tablewriter v0.0.5
+ ## explicit; go 1.12
+@@ -1710,7 +1710,7 @@ github.com/rcrowley/go-metrics
+ ## explicit; go 1.18
+ github.com/rivo/uniseg
+ # github.com/ryancurrah/gomodguard v1.3.5
+-## explicit; go 1.22.0
++## explicit; go 1.22
+ github.com/ryancurrah/gomodguard
+ # github.com/ryanrolds/sqlclosecheck v0.5.1
+ ## explicit; go 1.20
+@@ -1768,7 +1768,7 @@ github.com/shazow/go-diff/difflib
+ ## explicit; go 1.17
+ github.com/shibumi/go-pathspec
+ # github.com/sigstore/cosign/v2 v2.4.1
+-## explicit; go 1.22.7
++## explicit; go 1.22
+ github.com/sigstore/cosign/v2/cmd/cosign/cli/fulcio
+ github.com/sigstore/cosign/v2/cmd/cosign/cli/options
+ github.com/sigstore/cosign/v2/cmd/cosign/cli/sign/privacy
+@@ -1809,7 +1809,7 @@ github.com/sigstore/cosign/v2/pkg/providers/spiffe
+ github.com/sigstore/cosign/v2/pkg/signature
+ github.com/sigstore/cosign/v2/pkg/types
+ # github.com/sigstore/fulcio v1.6.3
+-## explicit; go 1.22.5
++## explicit; go 1.22
+ github.com/sigstore/fulcio/pkg/api
+ # github.com/sigstore/protobuf-specs v0.3.2
+ ## explicit; go 1.18
+@@ -1848,7 +1848,7 @@ github.com/sigstore/rekor/pkg/types/rekord
+ github.com/sigstore/rekor/pkg/types/rekord/v0.0.1
+ github.com/sigstore/rekor/pkg/util
+ # github.com/sigstore/sigstore v1.8.10
+-## explicit; go 1.22.8
++## explicit; go 1.22
+ github.com/sigstore/sigstore/pkg/cryptoutils
+ github.com/sigstore/sigstore/pkg/fulcioroots
+ github.com/sigstore/sigstore/pkg/oauth
+@@ -1860,16 +1860,16 @@ github.com/sigstore/sigstore/pkg/signature/options
+ github.com/sigstore/sigstore/pkg/signature/payload
+ github.com/sigstore/sigstore/pkg/tuf
+ # github.com/sigstore/sigstore/pkg/signature/kms/aws v1.8.10
+-## explicit; go 1.22.8
++## explicit; go 1.22
+ github.com/sigstore/sigstore/pkg/signature/kms/aws
+ # github.com/sigstore/sigstore/pkg/signature/kms/azure v1.8.10
+-## explicit; go 1.22.8
++## explicit; go 1.22
+ github.com/sigstore/sigstore/pkg/signature/kms/azure
+ # github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.8.10
+-## explicit; go 1.22.8
++## explicit; go 1.22
+ github.com/sigstore/sigstore/pkg/signature/kms/gcp
+ # github.com/sigstore/sigstore/pkg/signature/kms/hashivault v1.8.10
+-## explicit; go 1.22.8
++## explicit; go 1.22
+ github.com/sigstore/sigstore/pkg/signature/kms/hashivault
+ # github.com/sigstore/timestamp-authority v1.2.2
+ ## explicit; go 1.21
+@@ -2422,7 +2422,7 @@ golang.org/x/exp/slog/internal/buffer
+ ## explicit; go 1.18
+ golang.org/x/exp/typeparams
+ # golang.org/x/mod v0.21.0
+-## explicit; go 1.22.0
++## explicit; go 1.22
+ golang.org/x/mod/internal/lazyregexp
+ golang.org/x/mod/modfile
+ golang.org/x/mod/module
+@@ -2865,7 +2865,7 @@ gopkg.in/yaml.v2
+ ## explicit
+ gopkg.in/yaml.v3
+ # honnef.co/go/tools v0.5.1
+-## explicit; go 1.22.1
++## explicit; go 1.22
+ honnef.co/go/tools/analysis/callcheck
+ honnef.co/go/tools/analysis/code
+ honnef.co/go/tools/analysis/edit
+@@ -3044,7 +3044,7 @@ honnef.co/go/tools/stylecheck/st1022
+ honnef.co/go/tools/stylecheck/st1023
+ honnef.co/go/tools/unused
+ # k8s.io/api v0.31.2
+-## explicit; go 1.22.0
++## explicit; go 1.22
+ k8s.io/api/admission/v1
+ k8s.io/api/admissionregistration/v1
+ k8s.io/api/admissionregistration/v1alpha1
+@@ -3107,7 +3107,7 @@ k8s.io/api/storagemigration/v1alpha1
+ k8s.io/apiextensions-apiserver/pkg/apis/apiextensions
+ k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1
+ # k8s.io/apimachinery v0.31.2
+-## explicit; go 1.22.0
++## explicit; go 1.22
+ k8s.io/apimachinery/pkg/api/equality
+ k8s.io/apimachinery/pkg/api/errors
+ k8s.io/apimachinery/pkg/api/meta
+@@ -3163,7 +3163,7 @@ k8s.io/apimachinery/pkg/watch
+ k8s.io/apimachinery/third_party/forked/golang/json
+ k8s.io/apimachinery/third_party/forked/golang/reflect
+ # k8s.io/client-go v0.31.2
+-## explicit; go 1.22.0
++## explicit; go 1.22
+ k8s.io/client-go/applyconfigurations
+ k8s.io/client-go/applyconfigurations/admissionregistration/v1
+ k8s.io/client-go/applyconfigurations/admissionregistration/v1alpha1
+@@ -3490,7 +3490,7 @@ k8s.io/client-go/util/retry
+ k8s.io/client-go/util/watchlist
+ k8s.io/client-go/util/workqueue
+ # k8s.io/code-generator v0.31.2
+-## explicit; go 1.22.0
++## explicit; go 1.22
+ k8s.io/code-generator/cmd/deepcopy-gen
+ k8s.io/code-generator/cmd/deepcopy-gen/args
+ k8s.io/code-generator/cmd/deepcopy-gen/generators
