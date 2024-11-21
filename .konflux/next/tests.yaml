@@ -3,9 +3,9 @@
 apiVersion: appstudio.redhat.com/v1beta2
 kind: IntegrationTestScenario
 metadata:
-  name: tektoncd-chains-main-enterprise-contract
+  name: tektoncd-chains-next-enterprise-contract
 spec:
-  application: tektoncd-chains-main
+  application: tektoncd-chains-next
   contexts:
     - description: Application testing
       name: group
