@@ -29,16 +29,16 @@ spec:
     description: the git revision to release
   - name: imageRegistry
     description: The target image registry
-    default: ghcr.io
+    default: gcr.io
   - name: imageRegistryPath
     description: The path (project) in the image registry
-    default: tektoncd/chains
+    default: tekton-releases
   - name: imageRegistryRegions
     description: The target image registry regions
-    default: ""
+    default: "us eu asia"
   - name: imageRegistryUser
     description: The user for the image registry credentials
-    default: tekton-robot
+    default: _json_key
   - name: versionTag
     description: The X.Y.Z version that the artifacts should be tagged with
   - name: releaseBucket
@@ -52,7 +52,7 @@ spec:
     default: linux/amd64,linux/arm64,linux/ppc64le,linux/s390x
   - name: koExtraArgs
     description: Extra args to be passed to ko
-    default: ""
+    default: "--preserve-import-paths"
   - name: serviceAccountPath
     description: The path to the service account file within the release-secret workspace
   - name: serviceAccountImagesPath
