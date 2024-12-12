@@ -9,6 +9,7 @@ metadata:
   name: tektoncd-chains-next-rp
 spec:
   application: tektoncd-chains-next
+  target: tekton-ecosystem-tenant
   tenantPipeline:
     serviceAccountName: release-registry-openshift-pipelines-next
     pipelineRef:
