@@ -2091,8 +2091,8 @@ github.com/tektoncd/pipeline/pkg/result
 github.com/tektoncd/pipeline/pkg/spire/config
 github.com/tektoncd/pipeline/pkg/substitution
 github.com/tektoncd/pipeline/test
-# github.com/tektoncd/plumbing v0.0.0-20230907180608-5625252a2de1
-## explicit; go 1.19
+# github.com/tektoncd/plumbing v0.0.0-20250115133002-f515628dffea
+## explicit; go 1.22
 github.com/tektoncd/plumbing
 github.com/tektoncd/plumbing/scripts
 # github.com/tetafro/godot v1.4.18
@@ -2448,7 +2448,7 @@ golang.org/x/mod/modfile
 golang.org/x/mod/module
 golang.org/x/mod/semver
 golang.org/x/mod/sumdb/note
-# golang.org/x/net v0.31.0
+# golang.org/x/net v0.33.0
 ## explicit; go 1.18
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp

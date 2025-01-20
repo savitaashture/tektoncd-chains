@@ -1,7 +1,8 @@
 module github.com/tektoncd/chains
 
-go 1.22.8
-toolchain go1.23.3
+go 1.23.2
+
+toolchain go1.23.4
 
 require (
 	cloud.google.com/go/compute/metadata v0.6.0
@@ -30,7 +31,7 @@ require (
 	github.com/spiffe/go-spiffe/v2 v2.4.0
 	github.com/stretchr/testify v1.10.0
 	github.com/tektoncd/pipeline v0.66.0
-	github.com/tektoncd/plumbing v0.0.0-20230907180608-5625252a2de1
+	github.com/tektoncd/plumbing v0.0.0-20250115133002-f515628dffea
 	go.opencensus.io v0.24.0
 	go.uber.org/zap v1.27.0
 	gocloud.dev v0.40.0
@@ -433,7 +434,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20241108190413-2d47ceb2692f // indirect
 	golang.org/x/mod v0.22.0 // indirect
-	golang.org/x/net v0.31.0 // indirect
+	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/oauth2 v0.24.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect
