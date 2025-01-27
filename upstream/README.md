@@ -23,7 +23,7 @@ Supply Chain Security in Tekton Pipelines
 ## Getting Started
 
 Tekton Chains is a Kubernetes Custom Resource Definition (CRD) controller that
-allows you to manage your supply chain security in Tekton
+allows you to manage your supply chain security in Tekton.
 
 In its default mode of operation, Chains works by observing all `TaskRuns`
 executions in your cluster. When `TaskRuns` complete, Chains takes a snapshot of
