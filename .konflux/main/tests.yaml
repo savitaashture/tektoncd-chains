@@ -3,17 +3,19 @@
 apiVersion: appstudio.redhat.com/v1beta2
 kind: IntegrationTestScenario
 metadata:
-  name: tektoncd-chains-main-enterprise-contract-group
+  name: tektoncd-chains-main-enterprise-contract
 spec:
   application: tektoncd-chains-main
   contexts:
-    - description: Application testing
-      name: pull_request
+    - description: Application testing for tektoncd-chains-main-controller
+      name: component_tektoncd-chains-main-controller
   params:
     - name: POLICY_CONFIGURATION
       value: tekton-ecosystem-tenant/tekton-ecosystem-tenant-containers
     - name: TIMEOUT
       value: "15m0s"
+    - name: SINGLE_COMPONENT
+      value: "true"
   resolverRef:
     params:
       - name: url
