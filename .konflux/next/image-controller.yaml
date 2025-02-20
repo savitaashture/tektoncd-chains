@@ -3,7 +3,7 @@
 apiVersion: appstudio.redhat.com/v1alpha1
 kind: ImageRepository
 metadata:
-  name: tektoncd-chains-next-controller
+  name: next-chains-controller-rhel9
   annotations:
     image-controller.appstudio.redhat.com/update-component-image: "true"
   labels:
@@ -11,5 +11,5 @@ metadata:
     appstudio.redhat.com/application: tektoncd-chains-next
 spec:
   image:
-   name: tektoncd-chains-next/controller
+   name: next/chains-controller-rhel9
    visibility: public
