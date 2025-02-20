@@ -14,7 +14,7 @@ follows:
   - The first Tekton Chains LTS release will be **v0.13.0** in October 2022
 
 Tekton Chains produces nightly builds, publicly available on
-`gcr.io/tekton-nightly`.
+[ghcr.io/tektoncd/chains/controller-92006fd957c0afd31de6a40b3e33b39f](https://github.com/tektoncd/chains/pkgs/container/chains%2Fcontroller-92006fd957c0afd31de6a40b3e33b39f).
 
 ### Transition Process
 
@@ -100,33 +100,19 @@ deprecation window timers begin from when the release is published.
 
 ## Current Releases
 
+### v0.23 (LTS)
+- **Latest Release**: [v0.23.1][v0-23-1] (2025-01-21)
+- **Initial Release**: [v0.23.0][v0-23-0] (2024-11-06)
+
+[v0-23-0]: https://github.com/tektoncd/chains/releases/tag/v0.23.0
+[v0-23-1]: https://github.com/tektoncd/chains/releases/tag/v0.23.1
+
 ### v0.22 (LTS)
-- **Latest Release**: [v0.22.2][v0-22-2] (2024-09-16)
+- **Latest Release**: [v0.22.3][v0-22-3] (2025-01-20)
 - **Initial Release**: [v0.22.0][v0-22-0] (2024-08-19)
 
 [v0-22-0]: https://github.com/tektoncd/chains/releases/tag/v0.22.0
-[v0-22-2]: https://github.com/tektoncd/chains/releases/tag/v0.22.2
-
-### v0.21 (LTS)
-- **Latest Release**: [v0.21.1][v0-21-1] (2024-06-10)
-- **Initial Release**: [v0.21.0][v0-21-0] (2024-05-23)
-
-[v0-21-0]: https://github.com/tektoncd/chains/releases/tag/v0.21.0
-[v0-21-1]: https://github.com/tektoncd/chains/releases/tag/v0.21.1
-
-### v0.20 (LTS)
-
-- **Latest Release**: [v0.20.0][v0-20-0] (2024-01-31)
-- **Initial Release**: [v0.20.0][v0-20-0] (2024-01-31)
-
-[v0-20-0]: https://github.com/tektoncd/chains/releases/tag/v0.20.0
-
-### v0.19 (LTS)
-
-- **Latest Release**: [v0.19.0][v0-19-0] (2023-10-26)
-- **Initial Release**: [v0.19.0][v0-19-0] (2023-10-26)
-
-[v0-19-0]: https://github.com/tektoncd/chains/releases/tag/v0.19.0
+[v0-22-3]: https://github.com/tektoncd/chains/releases/tag/v0.22.3
 
 ## Older Releases
 
