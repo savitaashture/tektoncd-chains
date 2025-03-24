@@ -13,10 +13,6 @@ import (
 	"go/token"
 	"go/types"
 	"os"
-
-	"golang.org/x/tools/go/analysis"
-	"golang.org/x/tools/internal/aliases"
-	"golang.org/x/tools/internal/analysisinternal"
 )
 
 // Format returns a string representation of the expression.
@@ -61,16 +57,12 @@ func HasSideEffects(info *types.Info, e ast.Expr) bool {
 
 // ReadFile reads a file and adds it to the FileSet
 // so that we can report errors against it using lineStart.
-func ReadFile(pass *analysis.Pass, filename string) ([]byte, *token.File, error) {
-	readFile := pass.ReadFile
-	if readFile == nil {
-		readFile = os.ReadFile
-	}
-	content, err := readFile(filename)
+func ReadFile(fset *token.FileSet, filename string) ([]byte, *token.File, error) {
+	content, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, nil, err
 	}
-	tf := pass.Fset.AddFile(filename, -1, len(content))
+	tf := fset.AddFile(filename, -1, len(content))
 	tf.SetLinesForContent(content)
 	return content, tf, nil
 }
@@ -121,7 +113,7 @@ func Imports(pkg *types.Package, path string) bool {
 // This function avoids allocating the concatenation of "pkg.Name",
 // which is important for the performance of syntax matching.
 func IsNamedType(t types.Type, pkgPath string, names ...string) bool {
-	n, ok := aliases.Unalias(t).(*types.Named)
+	n, ok := t.(*types.Named)
 	if !ok {
 		return false
 	}
@@ -158,5 +150,3 @@ func IsFunctionNamed(f *types.Func, pkgPath string, names ...string) bool {
 	}
 	return false
 }
-
-var MustExtractDoc = analysisinternal.MustExtractDoc

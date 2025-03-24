@@ -4,17 +4,12 @@ import (
 	"bytes"
 	"regexp"
 	"strings"
-	"unicode"
 )
 
 var (
-	reEmail     = regexp.MustCompile(`[[:alnum:]_.%+-]+@[[:alnum:]-.]+\.[[:alpha:]]{2,6}[^[:alpha:]]`)
-	reBackslash = regexp.MustCompile(`\\[[:lower:]]`)
-
-	// reHost Host name regular expression.
-	// The length of any one label is limited between 1 and 63 octets. (https://www.ietf.org/rfc/rfc2181.txt)
-	// A TLD has at least 2 letters.
-	reHost = regexp.MustCompile(`([[:alnum:]-]+\.)+[[:alpha:]]{2,63}`)
+	reEmail     = regexp.MustCompile(`[a-zA-Z0-9_.%+-]+@[a-zA-Z0-9-.]+\.[a-zA-Z]{2,6}[^a-zA-Z]`)
+	reHost      = regexp.MustCompile(`[a-zA-Z0-9-.]+\.[a-zA-Z]+`)
+	reBackslash = regexp.MustCompile(`\\[a-z]`)
 )
 
 // RemovePath attempts to strip away embedded file system paths, e.g.
@@ -25,7 +20,7 @@ var (
 func RemovePath(s string) string {
 	out := bytes.Buffer{}
 	var idx int
-	for s != "" {
+	for len(s) > 0 {
 		if idx = strings.IndexByte(s, '/'); idx == -1 {
 			out.WriteString(s)
 			break
@@ -67,18 +62,6 @@ func replaceWithBlanks(s string) string {
 	return strings.Repeat(" ", len(s))
 }
 
-// replaceHost same as replaceWithBlanks but if the string contains at least one uppercase letter returns the string.
-// Domain names are case-insensitive but browsers and DNS convert uppercase to lower case. (https://www.ietf.org/rfc/rfc4343.txt)
-func replaceHost(s string) string {
-	for _, r := range s {
-		if unicode.IsUpper(r) {
-			return s
-		}
-	}
-
-	return replaceWithBlanks(s)
-}
-
 // RemoveEmail remove email-like strings, e.g. "nickg+junk@xfoobar.com", "nickg@xyz.abc123.biz".
 func RemoveEmail(s string) string {
 	return reEmail.ReplaceAllStringFunc(s, replaceWithBlanks)
@@ -86,7 +69,7 @@ func RemoveEmail(s string) string {
 
 // RemoveHost removes host-like strings "foobar.com" "abc123.fo1231.biz".
 func RemoveHost(s string) string {
-	return reHost.ReplaceAllStringFunc(s, replaceHost)
+	return reHost.ReplaceAllStringFunc(s, replaceWithBlanks)
 }
 
 // RemoveBackslashEscapes removes characters that are preceded by a backslash.

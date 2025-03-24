@@ -11,7 +11,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/confidential"
 )
 
@@ -25,17 +24,11 @@ type ClientSecretCredentialOptions struct {
 	// Add the wildcard value "*" to allow the credential to acquire tokens for any tenant in which the
 	// application is registered.
 	AdditionallyAllowedTenants []string
-
 	// DisableInstanceDiscovery should be set true only by applications authenticating in disconnected clouds, or
-	// private clouds such as Azure Stack. It determines whether the credential requests Microsoft Entra instance metadata
+	// private clouds such as Azure Stack. It determines whether the credential requests Azure AD instance metadata
 	// from https://login.microsoft.com before authenticating. Setting this to true will skip this request, making
 	// the application responsible for ensuring the configured authority is valid and trustworthy.
 	DisableInstanceDiscovery bool
-
-	// Cache is a persistent cache the credential will use to store the tokens it acquires, making
-	// them available to other processes and credential instances. The default, zero value means the
-	// credential will store tokens in memory and not share them with any other credential instance.
-	Cache Cache
 }
 
 // ClientSecretCredential authenticates an application with a client secret.
@@ -54,7 +47,6 @@ func NewClientSecretCredential(tenantID string, clientID string, clientSecret st
 	}
 	msalOpts := confidentialClientOptions{
 		AdditionallyAllowedTenants: options.AdditionallyAllowedTenants,
-		Cache:                      options.Cache,
 		ClientOptions:              options.ClientOptions,
 		DisableInstanceDiscovery:   options.DisableInstanceDiscovery,
 	}
@@ -62,16 +54,12 @@ func NewClientSecretCredential(tenantID string, clientID string, clientSecret st
 	if err != nil {
 		return nil, err
 	}
-	return &ClientSecretCredential{client: c}, nil
+	return &ClientSecretCredential{c}, nil
 }
 
-// GetToken requests an access token from Microsoft Entra ID. This method is called automatically by Azure SDK clients.
+// GetToken requests an access token from Azure Active Directory. This method is called automatically by Azure SDK clients.
 func (c *ClientSecretCredential) GetToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
-	var err error
-	ctx, endSpan := runtime.StartSpan(ctx, credNameSecret+"."+traceOpGetToken, c.client.azClient.Tracer(), nil)
-	defer func() { endSpan(err) }()
-	tk, err := c.client.GetToken(ctx, opts)
-	return tk, err
+	return c.client.GetToken(ctx, opts)
 }
 
 var _ azcore.TokenCredential = (*ClientSecretCredential)(nil)

@@ -1,45 +1,29 @@
 package processors
 
 import (
-	"fmt"
 	"regexp"
-	"strings"
 
-	"github.com/golangci/golangci-lint/pkg/config"
 	"github.com/golangci/golangci-lint/pkg/result"
 )
 
-var _ Processor = (*Exclude)(nil)
-
 type Exclude struct {
-	name string
-
 	pattern *regexp.Regexp
 }
 
-func NewExclude(cfg *config.Issues) *Exclude {
-	p := &Exclude{name: "exclude"}
+var _ Processor = Exclude{}
 
-	var pattern string
-	if len(cfg.ExcludePatterns) != 0 {
-		pattern = fmt.Sprintf("(%s)", strings.Join(cfg.ExcludePatterns, "|"))
-	}
-
-	prefix := caseInsensitivePrefix
-	if cfg.ExcludeCaseSensitive {
-		p.name = "exclude-case-sensitive"
-		prefix = ""
-	}
-
+func NewExclude(pattern string) *Exclude {
+	var patternRe *regexp.Regexp
 	if pattern != "" {
-		p.pattern = regexp.MustCompile(prefix + pattern)
+		patternRe = regexp.MustCompile("(?i)" + pattern)
 	}
-
-	return p
+	return &Exclude{
+		pattern: patternRe,
+	}
 }
 
 func (p Exclude) Name() string {
-	return p.name
+	return "exclude"
 }
 
 func (p Exclude) Process(issues []result.Issue) ([]result.Issue, error) {
@@ -47,9 +31,29 @@ func (p Exclude) Process(issues []result.Issue) ([]result.Issue, error) {
 		return issues, nil
 	}
 
-	return filterIssues(issues, func(issue *result.Issue) bool {
-		return !p.pattern.MatchString(issue.Text)
+	return filterIssues(issues, func(i *result.Issue) bool {
+		return !p.pattern.MatchString(i.Text)
 	}), nil
 }
 
-func (Exclude) Finish() {}
+func (p Exclude) Finish() {}
+
+type ExcludeCaseSensitive struct {
+	*Exclude
+}
+
+var _ Processor = ExcludeCaseSensitive{}
+
+func NewExcludeCaseSensitive(pattern string) *ExcludeCaseSensitive {
+	var patternRe *regexp.Regexp
+	if pattern != "" {
+		patternRe = regexp.MustCompile(pattern)
+	}
+	return &ExcludeCaseSensitive{
+		&Exclude{pattern: patternRe},
+	}
+}
+
+func (p ExcludeCaseSensitive) Name() string {
+	return "exclude-case-sensitive"
+}

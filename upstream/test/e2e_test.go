@@ -27,6 +27,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"testing"
@@ -36,7 +37,6 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	intoto "github.com/in-toto/attestation/go/v1"
 	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/secure-systems-lab/go-securesystemslib/dsse"
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
@@ -49,27 +49,15 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
-	"google.golang.org/protobuf/encoding/protojson"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	logtesting "knative.dev/pkg/logging/testing"
 )
-
-var namespace string
-
-const localhost string = "localhost"
-
-func init() {
-	namespace = os.Getenv("namespace")
-	if namespace == "" {
-		namespace = "tekton-chains"
-	}
-}
 
 func TestInstall(t *testing.T) {
 	ctx := logtesting.TestContextWithLogger(t)
 	c, _, cleanup := setup(ctx, t, setupOpts{})
 	t.Cleanup(cleanup)
-	dep, err := c.KubeClient.AppsV1().Deployments(namespace).Get(ctx, "tekton-chains-controller", metav1.GetOptions{})
+	dep, err := c.KubeClient.AppsV1().Deployments("tekton-chains").Get(ctx, "tekton-chains-controller", metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("Error getting chains deployment: %v", err)
 	}
@@ -154,10 +142,7 @@ func TestRekor(t *testing.T) {
 				"artifacts.oci.format":      "simplesigning",
 				"artifacts.oci.signer":      "x509",
 				"artifacts.oci.storage":     "tekton",
-				// TODO: revert back to manual once we get the fix in tektoncd/pipeline
-				// Chains issue: https://github.com/tektoncd/chains/issues/1117
-				// Pipelines issue: https://github.com/tektoncd/pipeline/issues/7291
-				"transparency.enabled": "true",
+				"transparency.enabled":      "manual",
 			},
 			getObject: getTaskRunObject,
 		},
@@ -170,10 +155,7 @@ func TestRekor(t *testing.T) {
 				"artifacts.oci.format":          "simplesigning",
 				"artifacts.oci.signer":          "x509",
 				"artifacts.oci.storage":         "tekton",
-				// TODO: revert back to manual once we get the fix in tektoncd/pipeline
-				// Chains issue: https://github.com/tektoncd/chains/issues/1117
-				// Pipelines issue: https://github.com/tektoncd/pipeline/issues/7291
-				"transparency.enabled": "true",
+				"transparency.enabled":          "manual",
 			},
 			getObject: getPipelineRunObject,
 		},
@@ -231,13 +213,6 @@ func TestOCISigning(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ctx := logtesting.TestContextWithLogger(t)
 			c, ns, cleanup := setup(ctx, t, test.opts)
-			OPENSHIFT := os.Getenv("OPENSHIFT")
-			if OPENSHIFT == localhost {
-				if err := assignSCC(ns); err != nil {
-					t.Fatalf("error creating scc: %s", err)
-				}
-			}
-
 			t.Cleanup(cleanup)
 
 			// Setup the right config.
@@ -412,7 +387,6 @@ func TestFulcio(t *testing.T) {
 }
 
 func base64Decode(t *testing.T, s string) []byte {
-	t.Helper()
 	b, err := base64.StdEncoding.DecodeString(s)
 	if err != nil {
 		b, err = base64.URLEncoding.DecodeString(s)
@@ -421,6 +395,17 @@ func base64Decode(t *testing.T, s string) []byte {
 		}
 	}
 	return b
+}
+
+// DSSE messages contain the signature and payload in one object, but our interface expects a signature and payload
+// This means we need to use one field and ignore the other. The DSSE verifier upstream uses the signature field and ignores
+// The message field, but we want the reverse here.
+type reverseDSSEVerifier struct {
+	signature.Verifier
+}
+
+func (w *reverseDSSEVerifier) VerifySignature(s io.Reader, m io.Reader, opts ...signature.VerifyOption) error {
+	return w.Verifier.VerifySignature(m, nil, opts...)
 }
 
 func TestOCIStorage(t *testing.T) {
@@ -443,13 +428,6 @@ func TestOCIStorage(t *testing.T) {
 	// create necessary resources
 	imageName := "chains-test-oci-storage"
 	image := fmt.Sprintf("%s/%s", c.internalRegistry, imageName)
-
-	OPENSHIFT := os.Getenv("OPENSHIFT")
-	if OPENSHIFT == localhost {
-		if err := assignSCC(ns); err != nil {
-			t.Fatalf("error creating scc: %s", err)
-		}
-	}
 	task := kanikoTask(t, ns, image)
 	if _, err := c.PipelineClient.TektonV1().Tasks(ns).Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("error creating task: %s", err)
@@ -521,13 +499,6 @@ func TestMultiBackendStorage(t *testing.T) {
 				registry:        true,
 				kanikoTaskImage: image,
 			})
-
-			OPENSHIFT := os.Getenv("OPENSHIFT")
-			if OPENSHIFT == localhost {
-				if err := assignSCC(ns); err != nil {
-					t.Fatalf("error creating scc: %s", err)
-				}
-			}
 			t.Cleanup(cleanup)
 
 			resetConfig := setConfigMap(ctx, t, c, test.cm)
@@ -602,14 +573,6 @@ func TestRetryFailed(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ctx := logtesting.TestContextWithLogger(t)
 			c, ns, cleanup := setup(ctx, t, test.opts)
-
-			OPENSHIFT := os.Getenv("OPENSHIFT")
-			if OPENSHIFT == localhost {
-				if err := assignSCC(ns); err != nil {
-					t.Fatalf("error creating scc: %s", err)
-				}
-			}
-
 			t.Cleanup(cleanup)
 
 			resetConfig := setConfigMap(ctx, t, c, test.cm)
@@ -719,6 +682,14 @@ func getTaskRunObjectV1(ns string) objects.TektonObject {
 	return o
 }
 
+func getTaskRunObjectV1WithParams(ns string, params []v1.Param) objects.TektonObject {
+	tr, _ := taskRunFromFile("testdata/type-hinting/taskrun.json")
+	o := objects.NewTaskRunObjectV1(tr)
+	o.Namespace = ns
+	o.Spec.Params = params
+	return o
+}
+
 var imagePipelineRun = v1.PipelineRun{
 	ObjectMeta: metav1.ObjectMeta{
 		GenerateName: "image-pipelinerun",
@@ -824,16 +795,11 @@ func TestProvenanceMaterials(t *testing.T) {
 			if err != nil {
 				t.Error(err)
 			}
-			var actualProvenance intoto.Statement
+			var actualProvenance in_toto.Statement
 			if err := json.Unmarshal(bodyBytes, &actualProvenance); err != nil {
 				t.Error(err)
 			}
-
-			predicateBytes, err := protojson.Marshal(actualProvenance.Predicate)
-			if err != nil {
-				t.Fatal(err)
-			}
-
+			predicateBytes, err := json.Marshal(actualProvenance.Predicate)
 			if err := json.Unmarshal(bodyBytes, &actualProvenance); err != nil {
 				t.Error(err)
 			}
@@ -890,18 +856,8 @@ func TestProvenanceMaterials(t *testing.T) {
 }
 
 func TestVaultKMSSpire(t *testing.T) {
-	OPENSHIFT := os.Getenv("OPENSHIFT")
-	if OPENSHIFT == localhost {
-		t.Skip("Skipping, vault kms spire integration tests .")
-	}
 	ctx := logtesting.TestContextWithLogger(t)
 	c, ns, cleanup := setup(ctx, t, setupOpts{})
-	if OPENSHIFT == localhost {
-		if err := assignSCC(ns); err != nil {
-			t.Fatalf("error creating scc: %s", err)
-		}
-	}
-
 	t.Cleanup(cleanup)
 
 	resetConfig := setConfigMap(ctx, t, c, map[string]string{

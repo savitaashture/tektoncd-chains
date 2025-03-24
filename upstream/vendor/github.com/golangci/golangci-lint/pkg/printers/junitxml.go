@@ -7,8 +7,6 @@ import (
 	"sort"
 	"strings"
 
-	"golang.org/x/exp/maps"
-
 	"github.com/golangci/golangci-lint/pkg/result"
 )
 
@@ -30,8 +28,6 @@ type testCaseXML struct {
 	Name      string     `xml:"name,attr"`
 	ClassName string     `xml:"classname,attr"`
 	Failure   failureXML `xml:"failure"`
-	File      string     `xml:"file,attr,omitempty"`
-	Line      int        `xml:"line,attr,omitempty"`
 }
 
 type failureXML struct {
@@ -41,15 +37,11 @@ type failureXML struct {
 }
 
 type JunitXML struct {
-	extended bool
-	w        io.Writer
+	w io.Writer
 }
 
-func NewJunitXML(extended bool, w io.Writer) *JunitXML {
-	return &JunitXML{
-		extended: extended,
-		w:        w,
-	}
+func NewJunitXML(w io.Writer) *JunitXML {
+	return &JunitXML{w: w}
 }
 
 func (p JunitXML) Print(issues []result.Issue) error {
@@ -74,17 +66,14 @@ func (p JunitXML) Print(issues []result.Issue) error {
 			},
 		}
 
-		if p.extended {
-			tc.File = i.Pos.Filename
-			tc.Line = i.Pos.Line
-		}
-
 		testSuite.TestCases = append(testSuite.TestCases, tc)
 		suites[suiteName] = testSuite
 	}
 
 	var res testSuitesXML
-	res.TestSuites = maps.Values(suites)
+	for _, val := range suites {
+		res.TestSuites = append(res.TestSuites, val)
+	}
 
 	sort.Slice(res.TestSuites, func(i, j int) bool {
 		return res.TestSuites[i].Suite < res.TestSuites[j].Suite

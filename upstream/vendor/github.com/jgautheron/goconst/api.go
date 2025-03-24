@@ -14,7 +14,6 @@ type Issue struct {
 }
 
 type Config struct {
-	IgnoreStrings      string
 	IgnoreTests        bool
 	MatchWithConstants bool
 	MinStringLength    int
@@ -29,7 +28,6 @@ func Run(files []*ast.File, fset *token.FileSet, cfg *Config) ([]Issue, error) {
 	p := New(
 		"",
 		"",
-		cfg.IgnoreStrings,
 		cfg.IgnoreTests,
 		cfg.MatchWithConstants,
 		cfg.ParseNumbers,

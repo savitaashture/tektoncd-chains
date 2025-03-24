@@ -2,9 +2,6 @@ package analyzer
 
 import (
 	"go/ast"
-	"go/token"
-	"go/types"
-	"strconv"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
@@ -43,14 +40,28 @@ func newNilNil() *nilNil {
 	}
 }
 
-var funcAndReturns = []ast.Node{
-	(*ast.FuncDecl)(nil),
-	(*ast.FuncLit)(nil),
-	(*ast.ReturnStmt)(nil),
-}
+var (
+	types = []ast.Node{(*ast.TypeSpec)(nil)}
+
+	funcAndReturns = []ast.Node{
+		(*ast.FuncDecl)(nil),
+		(*ast.FuncLit)(nil),
+		(*ast.ReturnStmt)(nil),
+	}
+)
+
+type typeSpecByName map[string]typer
 
 func (n *nilNil) run(pass *analysis.Pass) (interface{}, error) {
 	insp := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+
+	typeSpecs := typeSpecByName{
+		"any": newTyper(new(ast.InterfaceType)),
+	}
+	insp.Preorder(types, func(node ast.Node) {
+		t := node.(*ast.TypeSpec)
+		typeSpecs[t.Name.Name] = newTyper(t.Type)
+	})
 
 	var fs funcTypeStack
 	insp.Nodes(funcAndReturns, func(node ast.Node, push bool) (proceed bool) {
@@ -76,32 +87,13 @@ func (n *nilNil) run(pass *analysis.Pass) (interface{}, error) {
 				return false
 			}
 
-			fRes1Type := pass.TypesInfo.TypeOf(ft.Results.List[0].Type)
-			if fRes1Type == nil {
+			fRes1, fRes2 := ft.Results.List[0], ft.Results.List[1]
+			if !(n.isDangerNilField(fRes1, typeSpecs) && n.isErrorField(fRes2)) {
 				return false
 			}
 
-			fRes2Type := pass.TypesInfo.TypeOf(ft.Results.List[1].Type)
-			if fRes2Type == nil {
-				return false
-			}
-
-			ok, zv := n.isDangerNilType(fRes1Type)
-			if !(ok && isErrorType(fRes2Type)) {
-				return false
-			}
-
-			retVal, retErr := v.Results[0], v.Results[1]
-
-			var needWarn bool
-			switch zv {
-			case zeroValueNil:
-				needWarn = isNil(pass, retVal) && isNil(pass, retErr)
-			case zeroValueZero:
-				needWarn = isZero(retVal) && isNil(pass, retErr)
-			}
-
-			if needWarn {
+			rRes1, rRes2 := v.Results[0], v.Results[1]
+			if isNil(rRes1) && isNil(rRes2) {
 				pass.Reportf(v.Pos(), reportMsg)
 			}
 		}
@@ -112,73 +104,55 @@ func (n *nilNil) run(pass *analysis.Pass) (interface{}, error) {
 	return nil, nil //nolint:nilnil
 }
 
-type zeroValue int
+func (n *nilNil) isDangerNilField(f *ast.Field, typeSpecs typeSpecByName) bool {
+	return n.isDangerNilType(f.Type, typeSpecs)
+}
 
-const (
-	zeroValueNil = iota + 1
-	zeroValueZero
-)
-
-func (n *nilNil) isDangerNilType(t types.Type) (bool, zeroValue) {
+func (n *nilNil) isDangerNilType(t ast.Expr, typeSpecs typeSpecByName) bool {
 	switch v := t.(type) {
-	case *types.Pointer:
-		return n.checkedTypes.Contains(ptrType), zeroValueNil
+	case *ast.StarExpr:
+		return n.checkedTypes.Contains(ptrType)
 
-	case *types.Signature:
-		return n.checkedTypes.Contains(funcType), zeroValueNil
+	case *ast.FuncType:
+		return n.checkedTypes.Contains(funcType)
 
-	case *types.Interface:
-		return n.checkedTypes.Contains(ifaceType), zeroValueNil
+	case *ast.InterfaceType:
+		return n.checkedTypes.Contains(ifaceType)
 
-	case *types.Map:
-		return n.checkedTypes.Contains(mapType), zeroValueNil
+	case *ast.MapType:
+		return n.checkedTypes.Contains(mapType)
 
-	case *types.Chan:
-		return n.checkedTypes.Contains(chanType), zeroValueNil
+	case *ast.ChanType:
+		return n.checkedTypes.Contains(chanType)
 
-	case *types.Basic:
-		if v.Kind() == types.Uintptr {
-			return n.checkedTypes.Contains(uintptrType), zeroValueZero
+	case *ast.Ident:
+		if t, ok := typeSpecs[v.Name]; ok {
+			return n.isDangerNilType(t.Type(), typeSpecs)
 		}
-		if v.Kind() == types.UnsafePointer {
-			return n.checkedTypes.Contains(unsafeptrType), zeroValueNil
-		}
-
-	case *types.Named:
-		return n.isDangerNilType(v.Underlying())
 	}
-	return false, 0
+	return false
 }
 
-var errorIface = types.Universe.Lookup("error").Type().Underlying().(*types.Interface)
-
-func isErrorType(t types.Type) bool {
-	_, ok := t.Underlying().(*types.Interface)
-	return ok && types.Implements(t, errorIface)
+func (n *nilNil) isErrorField(f *ast.Field) bool {
+	return isIdent(f.Type, "error")
 }
 
-func isNil(pass *analysis.Pass, e ast.Expr) bool {
-	i, ok := e.(*ast.Ident)
+func isNil(e ast.Expr) bool {
+	return isIdent(e, "nil")
+}
+
+func isIdent(n ast.Node, name string) bool {
+	i, ok := n.(*ast.Ident)
 	if !ok {
 		return false
 	}
-
-	_, ok = pass.TypesInfo.ObjectOf(i).(*types.Nil)
-	return ok
+	return i.Name == name
 }
 
-func isZero(e ast.Expr) bool {
-	bl, ok := e.(*ast.BasicLit)
-	if !ok {
-		return false
-	}
-	if bl.Kind != token.INT {
-		return false
-	}
-
-	v, err := strconv.ParseInt(bl.Value, 0, 64)
-	if err != nil {
-		return false
-	}
-	return v == 0
+type typer interface {
+	Type() ast.Expr
 }
+
+func newTyper(t ast.Expr) typer     { return typerImpl{t: t} } //
+type typerImpl struct{ t ast.Expr } //
+func (ti typerImpl) Type() ast.Expr { return ti.t }

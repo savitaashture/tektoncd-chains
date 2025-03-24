@@ -12,4 +12,4 @@ check:
 	golangci-lint run
 
 build:
-	go build -ldflags "-s -w" -trimpath ./cmd/gomoddirectives/
+	go build -v -ldflags "-s -w" -trimpath ./cmd/gomoddirectives/

@@ -8,32 +8,33 @@ import (
 	"github.com/golangci/golangci-lint/pkg/result"
 )
 
-var _ Processor = (*PathShortener)(nil)
-
 type PathShortener struct {
 	wd string
 }
+
+var _ Processor = PathShortener{}
 
 func NewPathShortener() *PathShortener {
 	wd, err := fsutils.Getwd()
 	if err != nil {
 		panic(fmt.Sprintf("Can't get working dir: %s", err))
 	}
-
-	return &PathShortener{wd: wd}
+	return &PathShortener{
+		wd: wd,
+	}
 }
 
-func (PathShortener) Name() string {
+func (p PathShortener) Name() string {
 	return "path_shortener"
 }
 
 func (p PathShortener) Process(issues []result.Issue) ([]result.Issue, error) {
-	return transformIssues(issues, func(issue *result.Issue) *result.Issue {
-		newIssue := issue
-		newIssue.Text = strings.ReplaceAll(newIssue.Text, p.wd+"/", "")
-		newIssue.Text = strings.ReplaceAll(newIssue.Text, p.wd, "")
-		return newIssue
+	return transformIssues(issues, func(i *result.Issue) *result.Issue {
+		newI := i
+		newI.Text = strings.ReplaceAll(newI.Text, p.wd+"/", "")
+		newI.Text = strings.ReplaceAll(newI.Text, p.wd, "")
+		return newI
 	}), nil
 }
 
-func (PathShortener) Finish() {}
+func (p PathShortener) Finish() {}

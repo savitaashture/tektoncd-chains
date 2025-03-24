@@ -223,8 +223,6 @@ var goBuiltins = map[string]bool{
 	"imag":    true,
 	"len":     true,
 	"make":    true,
-	"min":     true,
-	"max":     true,
 	"new":     true,
 	"panic":   true,
 	"print":   true,
@@ -262,7 +260,7 @@ func isUnitTestFunc(ctx *linter.CheckerContext, fn *ast.FuncDecl) bool {
 	return false
 }
 
-// qualifiedName returns called expr fully-qualified name.
+// qualifiedName returns called expr fully-quallified name.
 //
 // It works for simple identifiers like f => "f" and identifiers
 // from other package like pkg.f => "pkg.f".

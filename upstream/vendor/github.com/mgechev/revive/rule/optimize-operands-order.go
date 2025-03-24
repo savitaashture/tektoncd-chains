@@ -49,27 +49,18 @@ func (w lintOptimizeOperandsOrderlExpr) Visit(node ast.Node) ast.Visitor {
 	}
 
 	isCaller := func(n ast.Node) bool {
-		ce, ok := n.(*ast.CallExpr)
-		if !ok {
-			return false
-		}
-
-		ident, isIdent := ce.Fun.(*ast.Ident)
-		if !isIdent {
-			return true
-		}
-
-		return ident.Name != "len" || ident.Obj != nil
+		_, ok := n.(*ast.CallExpr)
+		return ok
 	}
 
 	// check if the left sub-expression contains a function call
-	nodes := pick(binExpr.X, isCaller)
+	nodes := pick(binExpr.X, isCaller, nil)
 	if len(nodes) < 1 {
 		return w
 	}
 
 	// check if the right sub-expression does not contain a function call
-	nodes = pick(binExpr.Y, isCaller)
+	nodes = pick(binExpr.Y, isCaller, nil)
 	if len(nodes) > 0 {
 		return w
 	}

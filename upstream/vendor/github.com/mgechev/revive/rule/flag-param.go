@@ -88,7 +88,7 @@ func (w conditionVisitor) Visit(node ast.Node) ast.Visitor {
 		return false
 	}
 
-	uses := pick(ifStmt.Cond, fselect)
+	uses := pick(ifStmt.Cond, fselect, nil)
 
 	if len(uses) < 1 {
 		return w

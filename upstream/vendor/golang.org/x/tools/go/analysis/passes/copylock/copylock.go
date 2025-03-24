@@ -18,7 +18,6 @@ import (
 	"golang.org/x/tools/go/analysis/passes/internal/analysisutil"
 	"golang.org/x/tools/go/ast/astutil"
 	"golang.org/x/tools/go/ast/inspector"
-	"golang.org/x/tools/internal/aliases"
 	"golang.org/x/tools/internal/typeparams"
 )
 
@@ -31,7 +30,7 @@ values should be referred to through a pointer.`
 var Analyzer = &analysis.Analyzer{
 	Name:             "copylocks",
 	Doc:              Doc,
-	URL:              "https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/copylock",
+	URL:              "https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/copylocks",
 	Requires:         []*analysis.Analyzer{inspect.Analyzer},
 	RunDespiteErrors: true,
 	Run:              run,
@@ -240,10 +239,7 @@ func lockPathRhs(pass *analysis.Pass, x ast.Expr) typePath {
 			return nil
 		}
 	}
-	if tv, ok := pass.TypesInfo.Types[x]; ok && tv.IsValue() {
-		return lockPath(pass.Pkg, tv.Type, nil)
-	}
-	return nil
+	return lockPath(pass.Pkg, pass.TypesInfo.Types[x].Type, nil)
 }
 
 // lockPath returns a typePath describing the location of a lock value
@@ -259,7 +255,7 @@ func lockPath(tpkg *types.Package, typ types.Type, seen map[types.Type]bool) typ
 	}
 	seen[typ] = true
 
-	if tpar, ok := aliases.Unalias(typ).(*types.TypeParam); ok {
+	if tpar, ok := typ.(*typeparams.TypeParam); ok {
 		terms, err := typeparams.StructuralTerms(tpar)
 		if err != nil {
 			return nil // invalid type

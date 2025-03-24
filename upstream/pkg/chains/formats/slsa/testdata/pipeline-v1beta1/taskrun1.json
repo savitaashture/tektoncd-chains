@@ -1,6 +1,6 @@
 {
     "metadata": {
-        "name": "taskrun-build-0",
+        "name": "taskrun-build",
         "labels": {
             "tekton.dev/pipelineTask": "build"
         }

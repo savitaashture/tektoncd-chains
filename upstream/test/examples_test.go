@@ -39,12 +39,9 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"google.golang.org/protobuf/testing/protocmp"
-	"google.golang.org/protobuf/types/known/structpb"
-
-	slsa1 "github.com/in-toto/attestation/go/predicates/provenance/v1"
-	intoto "github.com/in-toto/attestation/go/v1"
-	slsa02 "github.com/in-toto/in-toto-golang/in_toto/slsa_provenance/v0.2"
+	intoto "github.com/in-toto/in-toto-golang/in_toto"
+	slsa "github.com/in-toto/in-toto-golang/in_toto/slsa_provenance/v0.2"
+	slsa1 "github.com/in-toto/in-toto-golang/in_toto/slsa_provenance/v1"
 	"github.com/secure-systems-lab/go-securesystemslib/dsse"
 
 	"github.com/tektoncd/chains/pkg/chains/objects"
@@ -63,7 +60,6 @@ const (
 type TestExample struct {
 	name              string
 	cm                map[string]string
-	pipelinesCm       map[string]string
 	getExampleObjects func(t *testing.T, ns string) map[string]objects.TektonObject
 	payloadKey        string
 	signatureKey      string
@@ -100,6 +96,42 @@ func TestExamples(t *testing.T) {
 			predicate:         "slsav0.1",
 		},
 		{
+			name: "taskrun-examples-slsa-v2",
+			cm: map[string]string{
+				"artifacts.taskrun.format": "slsa/v2alpha1",
+				"artifacts.oci.storage":    "tekton",
+			},
+			getExampleObjects: getTaskRunExamples,
+			payloadKey:        "chains.tekton.dev/payload-taskrun-%s",
+			signatureKey:      "chains.tekton.dev/signature-taskrun-%s",
+			outputLocation:    "slsa/v2",
+			predicate:         "slsav0.2",
+		},
+		{
+			name: "taskrun-examples-slsa-v2alpha2",
+			cm: map[string]string{
+				"artifacts.taskrun.format": "slsa/v2alpha2",
+				"artifacts.oci.storage":    "tekton",
+			},
+			getExampleObjects: getTaskRunExamples,
+			payloadKey:        "chains.tekton.dev/payload-taskrun-%s",
+			signatureKey:      "chains.tekton.dev/signature-taskrun-%s",
+			outputLocation:    "slsa/v2alpha2",
+			predicate:         "slsav1.0",
+		},
+		{
+			name: "pipelinerun-examples-slsa-v2alpha2",
+			cm: map[string]string{
+				"artifacts.pipelinerun.format": "slsa/v2alpha2",
+				"artifacts.oci.storage":        "tekton",
+			},
+			getExampleObjects: getPipelineRunExamples,
+			payloadKey:        "chains.tekton.dev/payload-pipelinerun-%s",
+			signatureKey:      "chains.tekton.dev/signature-pipelinerun-%s",
+			outputLocation:    "slsa/v2alpha2",
+			predicate:         "slsav1.0",
+		},
+		{
 			name: "taskrun-examples-slsa-v2alpha3",
 			cm: map[string]string{
 				"artifacts.taskrun.format": "slsa/v2alpha3",
@@ -123,76 +155,6 @@ func TestExamples(t *testing.T) {
 			outputLocation:    "slsa/v2alpha3",
 			predicate:         "slsav1.0",
 		},
-		{
-			name: "taskrun-examples-slsa-v2alpha4",
-			cm: map[string]string{
-				"artifacts.taskrun.format": "slsa/v2alpha4",
-				"artifacts.oci.storage":    "tekton",
-			},
-			getExampleObjects: getTaskRunExamples,
-			payloadKey:        "chains.tekton.dev/payload-taskrun-%s",
-			signatureKey:      "chains.tekton.dev/signature-taskrun-%s",
-			outputLocation:    "slsa/v2alpha4",
-			predicate:         "slsav1.0",
-		},
-		{
-			name: "taskrun-type-hinted-results-v2alpha4",
-			cm: map[string]string{
-				"artifacts.taskrun.format": "slsa/v2alpha4",
-				"artifacts.oci.storage":    "tekton",
-			},
-			pipelinesCm: map[string]string{
-				"enable-api-fields": "alpha",
-			},
-			getExampleObjects: getTaskRunWithTypeHintedResultsExamples,
-			payloadKey:        "chains.tekton.dev/payload-taskrun-%s",
-			signatureKey:      "chains.tekton.dev/signature-taskrun-%s",
-			outputLocation:    "slsa/v2alpha4",
-			predicate:         "slsav1.0",
-		},
-		{
-			name: "pipelinerun-examples-slsa-v2alpha4",
-			cm: map[string]string{
-				"artifacts.pipelinerun.format": "slsa/v2alpha4",
-				"artifacts.oci.storage":        "tekton",
-			},
-			getExampleObjects: getPipelineRunExamples,
-			payloadKey:        "chains.tekton.dev/payload-pipelinerun-%s",
-			signatureKey:      "chains.tekton.dev/signature-pipelinerun-%s",
-			outputLocation:    "slsa/v2alpha4",
-			predicate:         "slsav1.0",
-		},
-		{
-			name: "pipelinerun-type-hinted-results-v2alpha4",
-			cm: map[string]string{
-				"artifacts.pipelinerun.format": "slsa/v2alpha4",
-				"artifacts.oci.storage":        "tekton",
-			},
-			pipelinesCm: map[string]string{
-				"enable-api-fields": "alpha",
-			},
-			getExampleObjects: getPipelineRunWithTypeHintedResultsExamples,
-			payloadKey:        "chains.tekton.dev/payload-pipelinerun-%s",
-			signatureKey:      "chains.tekton.dev/signature-pipelinerun-%s",
-			outputLocation:    "slsa/v2alpha4",
-			predicate:         "slsav1.0",
-		},
-		{
-			name: "pipelinerun-no-repeated-subjects-v2alpha4",
-			cm: map[string]string{
-				"artifacts.pipelinerun.format":                 "slsa/v2alpha4",
-				"artifacts.oci.storage":                        "tekton",
-				"artifacts.pipelinerun.enable-deep-inspection": "true",
-			},
-			pipelinesCm: map[string]string{
-				"enable-api-fields": "alpha",
-			},
-			getExampleObjects: getPipelineRunWithRepeatedBuildArtifacts,
-			payloadKey:        "chains.tekton.dev/payload-pipelinerun-%s",
-			signatureKey:      "chains.tekton.dev/signature-pipelinerun-%s",
-			outputLocation:    "slsa/v2alpha4",
-			predicate:         "slsav1.0",
-		},
 	}
 
 	for _, test := range tests {
@@ -200,16 +162,9 @@ func TestExamples(t *testing.T) {
 			ctx := context.Background()
 			c, ns, cleanup := setup(ctx, t, setupOpts{})
 			t.Cleanup(cleanup)
-
 			cleanUpInTotoFormatter := setConfigMap(ctx, t, c, test.cm)
-			t.Cleanup(cleanUpInTotoFormatter)
-
-			if len(test.pipelinesCm) > 0 {
-				resetPipelinesConfig := setupPipelinesFeatureFlags(ctx, t, c, test.pipelinesCm)
-				t.Cleanup(resetPipelinesConfig)
-			}
-
 			runInTotoFormatterTests(ctx, t, ns, c, test)
+			cleanUpInTotoFormatter()
 		})
 	}
 }
@@ -218,7 +173,7 @@ func runInTotoFormatterTests(ctx context.Context, t *testing.T, ns string, c *cl
 	// TODO: Commenting this out for now. Causes race condition where tests write and revert the chains-config
 	// and signing-secrets out of order
 	// t.Parallel()
-	t.Helper()
+
 	for path, obj := range test.getExampleObjects(t, ns) {
 		obj := obj
 		t.Run(path, func(t *testing.T) {
@@ -238,57 +193,39 @@ func runInTotoFormatterTests(ctx context.Context, t *testing.T, ns string, c *cl
 
 			if test.predicate == "slsav1.0" {
 				// make sure provenance is correct
-				var gotProvenance intoto.Statement
+				var gotProvenance intoto.ProvenanceStatementSLSA1
 				if err := json.Unmarshal(payload, &gotProvenance); err != nil {
 					t.Fatal(err)
 				}
-				expected := expectedProvenanceSLSA1(ctx, t, path, completed, test.outputLocation, ns, c)
-
-				expPredicateStruct := expected.Predicate
-				expected.Predicate = nil
-
-				gotPredicateStruct := gotProvenance.Predicate
-				gotProvenance.Predicate = nil
+				expected := expectedProvenanceSLSA1(t, ctx, path, completed, test.outputLocation, ns, c)
 
 				opts := []cmp.Option{
 					// Annotations and labels may contain release specific information. Ignore
 					// those to avoid brittle tests.
-					cmpopts.IgnoreFields(slsa1.BuildDefinition{}, "InternalParameters"),
+					cmpopts.IgnoreFields(slsa1.ProvenanceBuildDefinition{}, "InternalParameters"),
 					cmpopts.IgnoreMapEntries(ignoreEnvironmentAnnotationsAndLabels),
-					protocmp.Transform(),
 				}
 
-				if diff := cmp.Diff(&expected, &gotProvenance, opts...); diff != "" {
+				if diff := cmp.Diff(expected, gotProvenance, opts...); diff != "" {
 					t.Errorf("provenance dont match: -want +got: %s", diff)
 				}
-
-				comparePredicates[slsa1.Provenance](t, expPredicateStruct, gotPredicateStruct, opts)
 			} else {
-				var gotProvenance intoto.Statement
+				var gotProvenance intoto.ProvenanceStatement
 				if err := json.Unmarshal(payload, &gotProvenance); err != nil {
 					t.Fatal(err)
 				}
-				expected := expectedProvenance(ctx, t, path, completed, test.outputLocation, ns, c)
-
-				expPredicateStruct := expected.Predicate
-				expected.Predicate = nil
-
-				gotPredicateStruct := gotProvenance.Predicate
-				gotProvenance.Predicate = nil
+				expected := expectedProvenance(t, ctx, path, completed, test.outputLocation, ns, c)
 
 				opts := []cmp.Option{
 					// Annotations and labels may contain release specific information. Ignore
 					// those to avoid brittle tests.
-					cmpopts.IgnoreFields(slsa02.ProvenanceInvocation{}, "Environment"),
+					cmpopts.IgnoreFields(slsa.ProvenanceInvocation{}, "Environment"),
 					cmpopts.IgnoreMapEntries(ignoreEnvironmentAnnotationsAndLabels),
-					protocmp.Transform(),
 				}
 
-				if diff := cmp.Diff(&expected, &gotProvenance, opts...); diff != "" {
+				if diff := cmp.Diff(expected, gotProvenance, opts...); diff != "" {
 					t.Errorf("provenance dont match: -want +got: %s", diff)
 				}
-
-				comparePredicates[slsa02.ProvenancePredicate](t, expPredicateStruct, gotPredicateStruct, opts)
 			}
 
 			// verify signature
@@ -335,34 +272,32 @@ func (v *verifier) Public() crypto.PublicKey {
 	return v.pub
 }
 
-func expectedProvenanceSLSA1(ctx context.Context, t *testing.T, example string, obj objects.TektonObject, outputLocation string, ns string, c *clients) intoto.Statement {
-	t.Helper()
+func expectedProvenanceSLSA1(t *testing.T, ctx context.Context, example string, obj objects.TektonObject, outputLocation string, ns string, c *clients) intoto.ProvenanceStatementSLSA1 {
 	switch obj.(type) {
 	case *objects.TaskRunObjectV1:
 		f := expectedTaskRunProvenanceFormat(t, example, obj, outputLocation)
 		return expectedAttestationSLSA1(t, example, f, outputLocation)
 	case *objects.PipelineRunObjectV1:
-		f := expectedPipelineRunProvenanceFormat(ctx, t, obj, ns, c)
+		f := expectedPipelineRunProvenanceFormat(t, ctx, example, obj, outputLocation, ns, c)
 		return expectedAttestationSLSA1(t, example, f, outputLocation)
 	default:
 		t.Error("Unexpected type trying to get provenance")
 	}
-	return intoto.Statement{}
+	return intoto.ProvenanceStatementSLSA1{}
 }
 
-func expectedProvenance(ctx context.Context, t *testing.T, example string, obj objects.TektonObject, outputLocation string, ns string, c *clients) intoto.Statement {
-	t.Helper()
+func expectedProvenance(t *testing.T, ctx context.Context, example string, obj objects.TektonObject, outputLocation string, ns string, c *clients) intoto.ProvenanceStatement {
 	switch obj.(type) {
 	case *objects.TaskRunObjectV1:
 		f := expectedTaskRunProvenanceFormat(t, example, obj, outputLocation)
 		return expectedAttestation(t, example, f, outputLocation)
 	case *objects.PipelineRunObjectV1:
-		f := expectedPipelineRunProvenanceFormat(ctx, t, obj, ns, c)
+		f := expectedPipelineRunProvenanceFormat(t, ctx, example, obj, outputLocation, ns, c)
 		return expectedAttestation(t, example, f, outputLocation)
 	default:
 		t.Error("Unexpected type trying to get provenance")
 	}
-	return intoto.Statement{}
+	return intoto.ProvenanceStatement{}
 }
 
 type URIDigestPair struct {
@@ -383,7 +318,6 @@ type Format struct {
 }
 
 func expectedTaskRunProvenanceFormat(t *testing.T, example string, obj objects.TektonObject, outputLocation string) Format {
-	t.Helper()
 	tr := obj.GetObject().(*v1.TaskRun)
 
 	name := tr.Name
@@ -419,8 +353,7 @@ func expectedTaskRunProvenanceFormat(t *testing.T, example string, obj objects.T
 	}
 }
 
-func expectedPipelineRunProvenanceFormat(ctx context.Context, t *testing.T, obj objects.TektonObject, ns string, c *clients) Format {
-	t.Helper()
+func expectedPipelineRunProvenanceFormat(t *testing.T, ctx context.Context, example string, obj objects.TektonObject, outputLocation string, ns string, c *clients) Format {
 	pr := obj.GetObject().(*v1.PipelineRun)
 
 	buildStartTimes := []string{}
@@ -467,20 +400,17 @@ func expectedPipelineRunProvenanceFormat(ctx context.Context, t *testing.T, obj 
 	}
 }
 
-func expectedAttestationSLSA1(t *testing.T, example string, f Format, outputLocation string) intoto.Statement {
-	t.Helper()
+func expectedAttestationSLSA1(t *testing.T, example string, f Format, outputLocation string) intoto.ProvenanceStatementSLSA1 {
 	b := readExpectedAttestationBytes(t, example, f, outputLocation)
 	return readExpectedAttestationSLSA1(t, b)
 }
 
-func expectedAttestation(t *testing.T, example string, f Format, outputLocation string) intoto.Statement {
-	t.Helper()
+func expectedAttestation(t *testing.T, example string, f Format, outputLocation string) intoto.ProvenanceStatement {
 	b := readExpectedAttestationBytes(t, example, f, outputLocation)
 	return readExpectedAttestation(t, b)
 }
 
 func readExpectedAttestationBytes(t *testing.T, example string, f Format, outputLocation string) *bytes.Buffer {
-	t.Helper()
 	path := filepath.Join("testdata", outputLocation, strings.Replace(filepath.Base(example), ".yaml", ".json", 1))
 	t.Logf("Reading expected provenance from %s", path)
 	contents, err := ioutil.ReadFile(path)
@@ -500,18 +430,16 @@ func readExpectedAttestationBytes(t *testing.T, example string, f Format, output
 	return b
 }
 
-func readExpectedAttestationSLSA1(t *testing.T, b *bytes.Buffer) intoto.Statement {
-	t.Helper()
-	var expected intoto.Statement
+func readExpectedAttestationSLSA1(t *testing.T, b *bytes.Buffer) intoto.ProvenanceStatementSLSA1 {
+	var expected intoto.ProvenanceStatementSLSA1
 	if err := json.Unmarshal(b.Bytes(), &expected); err != nil {
 		t.Fatal(err)
 	}
 	return expected
 }
 
-func readExpectedAttestation(t *testing.T, b *bytes.Buffer) intoto.Statement {
-	t.Helper()
-	var expected intoto.Statement
+func readExpectedAttestation(t *testing.T, b *bytes.Buffer) intoto.ProvenanceStatement {
+	var expected intoto.ProvenanceStatement
 	if err := json.Unmarshal(b.Bytes(), &expected); err != nil {
 		t.Fatal(err)
 	}
@@ -519,7 +447,6 @@ func readExpectedAttestation(t *testing.T, b *bytes.Buffer) intoto.Statement {
 }
 
 func getTaskRunExamples(t *testing.T, ns string) map[string]objects.TektonObject {
-	t.Helper()
 	examples := make(map[string]objects.TektonObject)
 	for _, example := range getExamplePaths(t, taskRunExamplesPath) {
 		examples[example] = taskRunFromExample(t, ns, example)
@@ -527,32 +454,7 @@ func getTaskRunExamples(t *testing.T, ns string) map[string]objects.TektonObject
 	return examples
 }
 
-func getTaskRunWithTypeHintedResultsExamples(t *testing.T, ns string) map[string]objects.TektonObject {
-	t.Helper()
-	path := "../examples/v2alpha4/task-with-object-type-hinting.yaml"
-	trs := make(map[string]objects.TektonObject)
-	trs[path] = taskRunFromExample(t, ns, path)
-	return trs
-}
-
-func getPipelineRunWithTypeHintedResultsExamples(t *testing.T, ns string) map[string]objects.TektonObject {
-	t.Helper()
-	path := "../examples/v2alpha4/pipeline-with-object-type-hinting.yaml"
-	prs := make(map[string]objects.TektonObject)
-	prs[path] = pipelineRunFromExample(t, ns, path)
-	return prs
-}
-
-func getPipelineRunWithRepeatedBuildArtifacts(t *testing.T, ns string) map[string]objects.TektonObject {
-	t.Helper()
-	path := "../examples/v2alpha4/pipeline-with-repeated-results.yaml"
-	prs := make(map[string]objects.TektonObject)
-	prs[path] = pipelineRunFromExample(t, ns, path)
-	return prs
-}
-
 func getPipelineRunExamples(t *testing.T, ns string) map[string]objects.TektonObject {
-	t.Helper()
 	examples := make(map[string]objects.TektonObject)
 	for _, example := range getExamplePaths(t, pipelineRunExamplesPath) {
 		examples[example] = pipelineRunFromExample(t, ns, example)
@@ -561,7 +463,6 @@ func getPipelineRunExamples(t *testing.T, ns string) map[string]objects.TektonOb
 }
 
 func getExamplePaths(t *testing.T, dir string) []string {
-	t.Helper()
 	var examplePaths []string
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -584,7 +485,6 @@ func getExamplePaths(t *testing.T, dir string) []string {
 }
 
 func taskRunFromExample(t *testing.T, ns, example string) objects.TektonObject {
-	t.Helper()
 	contents, err := ioutil.ReadFile(example)
 	if err != nil {
 		t.Fatal(err)
@@ -598,7 +498,6 @@ func taskRunFromExample(t *testing.T, ns, example string) objects.TektonObject {
 }
 
 func pipelineRunFromExample(t *testing.T, ns, example string) objects.TektonObject {
-	t.Helper()
 	contents, err := ioutil.ReadFile(example)
 	if err != nil {
 		t.Fatal(err)
@@ -624,33 +523,4 @@ func ignoreEnvironmentAnnotationsAndLabels(key string, value any) bool {
 		return hasAnnotations || hasLabels
 	}
 	return false
-}
-
-func comparePredicates[T any](t *testing.T, expPredicateStruct, gotPredicateStruct *structpb.Struct, opts []cmp.Option) {
-	t.Helper()
-	expJSON, err := expPredicateStruct.MarshalJSON()
-	if err != nil {
-		t.Fatalf("error getting predicate json: %v", err)
-	}
-
-	gotJSON, err := gotPredicateStruct.MarshalJSON()
-	if err != nil {
-		t.Fatalf("error getting predicate json: %v", err)
-	}
-
-	var expectedPredicate T
-	json.Unmarshal(expJSON, &expectedPredicate)
-	if err != nil {
-		t.Fatalf("error getting predicate original struct: %v", err)
-	}
-
-	var gotPredicate T
-	json.Unmarshal(gotJSON, &gotPredicate)
-	if err != nil {
-		t.Fatalf("error getting predicate original struct: %v", err)
-	}
-
-	if diff := cmp.Diff(&expectedPredicate, &gotPredicate, opts...); diff != "" {
-		t.Errorf("predicates dont match: -want +got: %s", diff)
-	}
 }

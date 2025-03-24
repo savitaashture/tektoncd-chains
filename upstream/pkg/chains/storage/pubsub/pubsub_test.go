@@ -19,7 +19,7 @@ import (
 	"log"
 	"testing"
 
-	intoto "github.com/in-toto/attestation/go/v1"
+	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/tektoncd/chains/pkg/chains/formats"
 	"github.com/tektoncd/chains/pkg/chains/objects"
 	"github.com/tektoncd/chains/pkg/config"
@@ -32,10 +32,7 @@ import (
 
 func TestBackend_StorePayload(t *testing.T) {
 	// pretty much anything that has no Subject
-	sampleIntotoStatementBytes, err := json.Marshal(intoto.Statement{})
-	if err != nil {
-		t.Fatalf("error getting statement: %v", err)
-	}
+	sampleIntotoStatementBytes, _ := json.Marshal(in_toto.Statement{})
 	logger := logtesting.TestLogger(t)
 
 	type fields struct {

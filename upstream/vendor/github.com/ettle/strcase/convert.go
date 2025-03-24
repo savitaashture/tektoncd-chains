@@ -29,7 +29,6 @@ const (
 // Case 2: UpperCase words, which don't need to support initialisms since everything is in upper case
 
 // convertWithoutInitialims only works for to UpperCase and LowerCase
-//
 //nolint:gocyclo
 func convertWithoutInitialisms(input string, delimiter rune, wordCase WordCase) string {
 	input = strings.TrimSpace(input)
@@ -39,7 +38,7 @@ func convertWithoutInitialisms(input string, delimiter rune, wordCase WordCase) 
 	}
 
 	var b strings.Builder
-	b.Grow(len(input) + 4) // In case we need to write delimiters where they weren't before
+	b.Grow(len(input) * 2) // In case we need to write delimiters where they weren't before
 
 	var prev, curr rune
 	next := runes[0] // 0 length will have already returned so safe to index
@@ -91,14 +90,13 @@ func convertWithoutInitialisms(input string, delimiter rune, wordCase WordCase) 
 			// Must be original case
 			b.WriteRune(curr)
 		}
-		inWord = true
+		inWord = inWord || true
 	}
 	return b.String()
 }
 
 // convertWithGoInitialisms changes a input string to a certain case with a
 // delimiter, respecting go initialisms but not skip runes
-//
 //nolint:gocyclo
 func convertWithGoInitialisms(input string, delimiter rune, wordCase WordCase) string {
 	input = strings.TrimSpace(input)
@@ -108,7 +106,7 @@ func convertWithGoInitialisms(input string, delimiter rune, wordCase WordCase) s
 	}
 
 	var b strings.Builder
-	b.Grow(len(input) + 4) // In case we need to write delimiters where they weren't before
+	b.Grow(len(input) * 2) // In case we need to write delimiters where they weren't before
 
 	firstWord := true
 
@@ -124,15 +122,10 @@ func convertWithGoInitialisms(input string, delimiter rune, wordCase WordCase) s
 		// Don't bother with initialisms if the word is longer than 5
 		// A quick proxy to avoid the extra memory allocations
 		if end-start <= 5 {
-			var word strings.Builder
-			word.Grow(end - start)
-			for i := start; i < end; i++ {
-				word.WriteRune(toUpper(runes[i]))
-			}
-			w := word.String()
-			if golintInitialisms[w] {
+			key := strings.ToUpper(string(runes[start:end]))
+			if golintInitialisms[key] {
 				if !firstWord || wordCase != CamelCase {
-					b.WriteString(w)
+					b.WriteString(key)
 					firstWord = false
 					return
 				}
@@ -195,7 +188,6 @@ func convertWithGoInitialisms(input string, delimiter rune, wordCase WordCase) s
 
 // convert changes a input string to a certain case with a delimiter,
 // respecting arbitrary initialisms and skip characters
-//
 //nolint:gocyclo
 func convert(input string, fn SplitFn, delimiter rune, wordCase WordCase,
 	initialisms map[string]bool) string {
@@ -206,7 +198,7 @@ func convert(input string, fn SplitFn, delimiter rune, wordCase WordCase,
 	}
 
 	var b strings.Builder
-	b.Grow(len(input) + 4) // In case we need to write delimiters where they weren't before
+	b.Grow(len(input) * 2) // In case we need to write delimiters where they weren't before
 
 	firstWord := true
 	var skipIndexes []int
@@ -229,14 +221,13 @@ func convert(input string, fn SplitFn, delimiter rune, wordCase WordCase,
 		// I'm open to it if there is a use case
 		if initialisms != nil {
 			var word strings.Builder
-			word.Grow(end - start)
 			for i := start; i < end; i++ {
 				word.WriteRune(toUpper(runes[i]))
 			}
-			w := word.String()
-			if initialisms[w] {
+			key := word.String()
+			if initialisms[key] {
 				if !firstWord || wordCase != CamelCase {
-					b.WriteString(w)
+					b.WriteString(key)
 					firstWord = false
 					return
 				}

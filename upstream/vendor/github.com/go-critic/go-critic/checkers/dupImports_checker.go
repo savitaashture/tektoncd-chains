@@ -15,7 +15,7 @@ func init() {
 	info.Before = `
 import (
 	"fmt"
-	printing "fmt" // Imported the second time
+	priting "fmt" // Imported the second time
 )`
 	info.After = `
 import(

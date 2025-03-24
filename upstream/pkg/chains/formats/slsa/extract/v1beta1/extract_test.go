@@ -23,13 +23,12 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	intoto "github.com/in-toto/attestation/go/v1"
+	intoto "github.com/in-toto/in-toto-golang/in_toto"
 	extractv1beta1 "github.com/tektoncd/chains/pkg/chains/formats/slsa/extract/v1beta1"
 	"github.com/tektoncd/chains/pkg/chains/formats/slsa/internal/compare"
 	"github.com/tektoncd/chains/pkg/chains/formats/slsa/internal/slsaconfig"
 	"github.com/tektoncd/chains/pkg/chains/objects"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"google.golang.org/protobuf/testing/protocmp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	logtesting "knative.dev/pkg/logging/testing"
 )
@@ -46,7 +45,7 @@ func TestSubjectDigestsAndRetrieveAllArtifactURIs(t *testing.T) {
 		name string
 		// a map of url:digest pairs for type hinting results
 		results      map[string]string
-		wantSubjects []*intoto.ResourceDescriptor
+		wantSubjects []intoto.Subject
 		wantFullURLs []string
 	}{
 		{
@@ -55,7 +54,7 @@ func TestSubjectDigestsAndRetrieveAllArtifactURIs(t *testing.T) {
 				artifactURL1: "sha256:" + artifactDigest1,
 				artifactURL2: "sha256:" + artifactDigest2,
 			},
-			wantSubjects: []*intoto.ResourceDescriptor{
+			wantSubjects: []intoto.Subject{
 				{
 					Name: artifactURL1,
 					Digest: map[string]string{
@@ -111,7 +110,7 @@ func TestSubjectDigestsAndRetrieveAllArtifactURIs(t *testing.T) {
 			}
 			for _, o := range runObjects {
 				gotSubjects := extractv1beta1.SubjectDigests(ctx, o, &slsaconfig.SlsaConfig{DeepInspectionEnabled: false})
-				if diff := cmp.Diff(tc.wantSubjects, gotSubjects, compare.SubjectCompareOption(), protocmp.Transform()); diff != "" {
+				if diff := cmp.Diff(tc.wantSubjects, gotSubjects, compare.SubjectCompareOption()); diff != "" {
 					t.Errorf("Wrong subjects extracted, diff=%s", diff)
 				}
 
@@ -130,14 +129,14 @@ func TestPipelineRunObserveModeForSubjects(t *testing.T) {
 		name                  string
 		pro                   objects.TektonObject
 		deepInspectionEnabled bool
-		wantSubjects          []*intoto.ResourceDescriptor
+		wantSubjects          []intoto.Subject
 		wantFullURLs          []string
 	}{
 		{
 			name:                  "deep inspection disabled",
 			pro:                   createProWithPipelineResults(map[string]string{artifactURL1: "sha256:" + artifactDigest1}),
 			deepInspectionEnabled: false,
-			wantSubjects: []*intoto.ResourceDescriptor{
+			wantSubjects: []intoto.Subject{
 				{
 					Name: artifactURL1,
 					Digest: map[string]string{
@@ -151,7 +150,7 @@ func TestPipelineRunObserveModeForSubjects(t *testing.T) {
 			name:                  "deep inspection enabled: no duplication",
 			pro:                   createProWithTaskRunResults(nil, []artifact{{uri: artifactURL2, digest: "sha256:" + artifactDigest2}}),
 			deepInspectionEnabled: true,
-			wantSubjects: []*intoto.ResourceDescriptor{
+			wantSubjects: []intoto.Subject{
 				{
 					Name: artifactURL2,
 					Digest: map[string]string{
@@ -168,7 +167,7 @@ func TestPipelineRunObserveModeForSubjects(t *testing.T) {
 				{uri: artifactURL2, digest: "sha256:" + artifactDigest2},
 			}),
 			deepInspectionEnabled: true,
-			wantSubjects: []*intoto.ResourceDescriptor{
+			wantSubjects: []intoto.Subject{
 				{
 					Name: artifactURL2,
 					Digest: map[string]string{
@@ -194,7 +193,7 @@ func TestPipelineRunObserveModeForSubjects(t *testing.T) {
 				{uri: artifactURL2, digest: "sha256:" + artifactDigest2},
 			}),
 			deepInspectionEnabled: true,
-			wantSubjects: []*intoto.ResourceDescriptor{
+			wantSubjects: []intoto.Subject{
 				{
 					Name: artifactURL2,
 					Digest: map[string]string{
@@ -209,12 +208,12 @@ func TestPipelineRunObserveModeForSubjects(t *testing.T) {
 		{
 			name: "deep inspection enabled: pipelinerun and taskrun have duplicated results",
 			pro: createProWithTaskRunResults(
-				createProWithPipelineResults(map[string]string{artifactURL1: "sha256:" + artifactDigest1}),
+				createProWithPipelineResults(map[string]string{artifactURL1: "sha256:" + artifactDigest1}).(*objects.PipelineRunObjectV1Beta1),
 				[]artifact{
 					{uri: artifactURL1, digest: "sha256:" + artifactDigest1},
 				}),
 			deepInspectionEnabled: true,
-			wantSubjects: []*intoto.ResourceDescriptor{
+			wantSubjects: []intoto.Subject{
 				{
 					Name: artifactURL1,
 					Digest: map[string]string{
@@ -229,12 +228,12 @@ func TestPipelineRunObserveModeForSubjects(t *testing.T) {
 		{
 			name: "deep inspection enabled: pipelinerun and taskrun have different results",
 			pro: createProWithTaskRunResults(
-				createProWithPipelineResults(map[string]string{artifactURL1: "sha256:" + artifactDigest1}),
+				createProWithPipelineResults(map[string]string{artifactURL1: "sha256:" + artifactDigest1}).(*objects.PipelineRunObjectV1Beta1),
 				[]artifact{
 					{uri: artifactURL2, digest: "sha256:" + artifactDigest2},
 				}),
 			deepInspectionEnabled: true,
-			wantSubjects: []*intoto.ResourceDescriptor{
+			wantSubjects: []intoto.Subject{
 				{
 					Name: artifactURL1,
 					Digest: map[string]string{
@@ -260,7 +259,7 @@ func TestPipelineRunObserveModeForSubjects(t *testing.T) {
 			ctx := logtesting.TestContextWithLogger(t)
 
 			gotSubjects := extractv1beta1.SubjectDigests(ctx, tc.pro, &slsaconfig.SlsaConfig{DeepInspectionEnabled: tc.deepInspectionEnabled})
-			if diff := cmp.Diff(tc.wantSubjects, gotSubjects, compare.SubjectCompareOption(), protocmp.Transform()); diff != "" {
+			if diff := cmp.Diff(tc.wantSubjects, gotSubjects, compare.SubjectCompareOption()); diff != "" {
 				t.Errorf("Wrong subjects extracted, diff=%s, %s", diff, gotSubjects)
 			}
 
@@ -272,7 +271,7 @@ func TestPipelineRunObserveModeForSubjects(t *testing.T) {
 	}
 }
 
-func createTaskRunObjectV1Beta1WithResults(results map[string]string) *objects.TaskRunObjectV1Beta1 {
+func createTaskRunObjectV1Beta1WithResults(results map[string]string) objects.TektonObject {
 	trResults := []v1beta1.TaskRunResult{}
 	prefix := 0
 	for url, digest := range results {
@@ -294,7 +293,7 @@ func createTaskRunObjectV1Beta1WithResults(results map[string]string) *objects.T
 	)
 }
 
-func createProWithPipelineResults(results map[string]string) *objects.PipelineRunObjectV1Beta1 {
+func createProWithPipelineResults(results map[string]string) objects.TektonObject {
 	prResults := []v1beta1.PipelineRunResult{}
 	prefix := 0
 	for url, digest := range results {

@@ -107,7 +107,7 @@ func badFormatAt(info *types.Info, e ast.Expr) int {
 		return -1
 	}
 
-	t, ok := tv.Type.(*types.Basic) // sic, no unalias
+	t, ok := tv.Type.(*types.Basic)
 	if !ok || t.Info()&types.IsString == 0 {
 		return -1
 	}

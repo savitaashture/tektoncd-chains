@@ -10,7 +10,6 @@ package ssa
 import (
 	"bytes"
 	"fmt"
-	"go/ast"
 	"go/types"
 	"io"
 	"os"
@@ -21,7 +20,7 @@ type sanity struct {
 	reporter io.Writer
 	fn       *Function
 	block    *BasicBlock
-	instrs   map[Instruction]unit
+	instrs   map[Instruction]struct{}
 	insane   bool
 }
 
@@ -133,11 +132,6 @@ func (s *sanity) checkInstr(idx int, instr Instruction) {
 
 	case *BinOp:
 	case *Call:
-		if common := instr.Call; common.IsInvoke() {
-			if !types.IsInterface(common.Value.Type()) {
-				s.errorf("invoke on %s (%s) which is not an interface type (or type param)", common.Value, common.Value.Type())
-			}
-		}
 	case *ChangeInterface:
 	case *ChangeType:
 	case *SliceToArrayPointer:
@@ -200,7 +194,7 @@ func (s *sanity) checkInstr(idx int, instr Instruction) {
 		t := v.Type()
 		if t == nil {
 			s.errorf("no type: %s = %s", v.Name(), v)
-		} else if t == tRangeIter || t == tDeferStack {
+		} else if t == tRangeIter {
 			// not a proper type; ignore.
 		} else if b, ok := t.Underlying().(*types.Basic); ok && b.Info()&types.IsUntyped != 0 {
 			s.errorf("instruction has 'untyped' result: %s = %s : %s", v.Name(), v, t)
@@ -350,7 +344,7 @@ func (s *sanity) checkBlock(b *BasicBlock, index int) {
 
 			// Check that "untyped" types only appear on constant operands.
 			if _, ok := (*op).(*Const); !ok {
-				if basic, ok := (*op).Type().Underlying().(*types.Basic); ok {
+				if basic, ok := (*op).Type().(*types.Basic); ok {
 					if basic.Info()&types.IsUntyped != 0 {
 						s.errorf("operand #%d of %s is untyped: %s", i, instr, basic)
 					}
@@ -446,8 +440,6 @@ func (s *sanity) checkFunction(fn *Function) bool {
 			// ok (instantiation with InstantiateGenerics on)
 		} else if fn.topLevelOrigin != nil && len(fn.typeargs) > 0 {
 			// ok (we always have the syntax set for instantiation)
-		} else if _, rng := fn.syntax.(*ast.RangeStmt); rng && fn.Synthetic == "range-over-func yield" {
-			// ok (range-func-yields are both synthetic and keep syntax)
 		} else {
 			s.errorf("got fromSource=%t, hasSyntax=%t; want same values", src, syn)
 		}
@@ -461,10 +453,10 @@ func (s *sanity) checkFunction(fn *Function) bool {
 		}
 	}
 	// Build the set of valid referrers.
-	s.instrs = make(map[Instruction]unit)
+	s.instrs = make(map[Instruction]struct{})
 	for _, b := range fn.Blocks {
 		for _, instr := range b.Instrs {
-			s.instrs[instr] = unit{}
+			s.instrs[instr] = struct{}{}
 		}
 	}
 	for i, p := range fn.Params {

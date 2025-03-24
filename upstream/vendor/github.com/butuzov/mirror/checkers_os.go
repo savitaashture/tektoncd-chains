@@ -15,7 +15,7 @@ var OsFileMethods = []checker.Violation{
 		Generate: &checker.Generate{
 			PreCondition: `f := &os.File{}`,
 			Pattern:      `Write($0)`,
-			Returns:      []string{"int", "error"},
+			Returns:      2,
 		},
 	},
 	{ // (*os.File).WriteString
@@ -30,7 +30,7 @@ var OsFileMethods = []checker.Violation{
 		Generate: &checker.Generate{
 			PreCondition: `f := &os.File{}`,
 			Pattern:      `WriteString($0)`,
-			Returns:      []string{"int", "error"},
+			Returns:      2,
 		},
 	},
 }

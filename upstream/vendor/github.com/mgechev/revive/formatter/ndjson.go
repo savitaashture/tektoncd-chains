@@ -1,8 +1,8 @@
 package formatter
 
 import (
-	"bytes"
 	"encoding/json"
+	"os"
 
 	"github.com/mgechev/revive/lint"
 )
@@ -20,8 +20,7 @@ func (*NDJSON) Name() string {
 
 // Format formats the failures gotten from the lint.
 func (*NDJSON) Format(failures <-chan lint.Failure, config lint.Config) (string, error) {
-	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
+	enc := json.NewEncoder(os.Stdout)
 	for failure := range failures {
 		obj := jsonObject{}
 		obj.Severity = severity(config, failure)
@@ -31,5 +30,5 @@ func (*NDJSON) Format(failures <-chan lint.Failure, config lint.Config) (string,
 			return "", err
 		}
 	}
-	return buf.String(), nil
+	return "", nil
 }

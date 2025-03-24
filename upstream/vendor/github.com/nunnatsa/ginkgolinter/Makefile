@@ -5,11 +5,8 @@ HASH_FLAG := -X github.com/nunnatsa/ginkgolinter/version.gitHash=$(COMMIT_HASH)
 
 BUILD_ARGS := -ldflags "$(VERSION_FLAG) $(HASH_FLAG)"
 
-build: unit-test
+build:
 	go build $(BUILD_ARGS) -o ginkgolinter ./cmd/ginkgolinter
-
-unit-test:
-	go test ./...
 
 build-for-windows:
 	GOOS=windows GOARCH=amd64 go build $(BUILD_ARGS) -o bin/ginkgolinter-amd64.exe ./cmd/ginkgolinter

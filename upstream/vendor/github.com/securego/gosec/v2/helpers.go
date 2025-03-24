@@ -15,15 +15,12 @@
 package gosec
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"go/ast"
 	"go/token"
 	"go/types"
 	"os"
-	"os/exec"
 	"os/user"
 	"path/filepath"
 	"regexp"
@@ -31,9 +28,6 @@ import (
 	"strconv"
 	"strings"
 )
-
-// envGoModVersion overrides the Go version detection.
-const envGoModVersion = "GOSECGOVERSION"
 
 // MatchCallByPackage ensures that the specified package is imported,
 // adjusts the name for any aliases and ignores cases that are
@@ -266,7 +260,7 @@ func getIdentStringValues(ident *ast.Ident, stringFinder func(ast.Node) (string,
 	return values
 }
 
-// GetIdentStringValuesRecursive returns the string of values of an Ident if they can be resolved
+// getIdentStringRecursive returns the string of values of an Ident if they can be resolved
 // The difference between this and GetIdentStringValues is that it will attempt to resolve the strings recursively,
 // if it is passed a *ast.BinaryExpr. See GetStringRecursive for details
 func GetIdentStringValuesRecursive(ident *ast.Ident) []string {
@@ -499,49 +493,19 @@ func RootPath(root string) (string, error) {
 	return filepath.Abs(root)
 }
 
-// GoVersion returns parsed version of Go mod version and fallback to runtime version if not found.
+// GoVersion returns parsed version of Go from runtime
 func GoVersion() (int, int, int) {
-	if env, ok := os.LookupEnv(envGoModVersion); ok {
-		return parseGoVersion(strings.TrimPrefix(env, "go"))
-	}
-
-	goVersion, err := goModVersion()
-	if err != nil {
-		return parseGoVersion(strings.TrimPrefix(runtime.Version(), "go"))
-	}
-
-	return parseGoVersion(goVersion)
-}
-
-type goListOutput struct {
-	GoVersion string `json:"GoVersion"`
-}
-
-func goModVersion() (string, error) {
-	cmd := exec.Command("go", "list", "-m", "-json")
-
-	raw, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("command go list: %w: %s", err, string(raw))
-	}
-
-	var v goListOutput
-	err = json.NewDecoder(bytes.NewBuffer(raw)).Decode(&v)
-	if err != nil {
-		return "", fmt.Errorf("unmarshaling error: %w: %s", err, string(raw))
-	}
-
-	return v.GoVersion, nil
+	return parseGoVersion(runtime.Version())
 }
 
 // parseGoVersion parses Go version.
 // example:
-// - 1.19rc2
-// - 1.19beta2
-// - 1.19.4
-// - 1.19
+// - go1.19rc2
+// - go1.19beta2
+// - go1.19.4
+// - go1.19
 func parseGoVersion(version string) (int, int, int) {
-	exp := regexp.MustCompile(`(\d+).(\d+)(?:.(\d+))?.*`)
+	exp := regexp.MustCompile(`go(\d+).(\d+)(?:.(\d+))?.*`)
 	parts := exp.FindStringSubmatch(version)
 	if len(parts) <= 1 {
 		return 0, 0, 0

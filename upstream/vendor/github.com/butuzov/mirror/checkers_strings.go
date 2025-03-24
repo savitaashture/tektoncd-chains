@@ -15,7 +15,7 @@ var (
 
 			Generate: &checker.Generate{
 				Pattern: `Compare($0,$1)`,
-				Returns: []string{"int"},
+				Returns: 1,
 			},
 		},
 		{ // strings.Contains
@@ -29,7 +29,7 @@ var (
 
 			Generate: &checker.Generate{
 				Pattern: `Contains($0,$1)`,
-				Returns: []string{"bool"},
+				Returns: 1,
 			},
 		},
 		{ // strings.ContainsAny
@@ -43,7 +43,7 @@ var (
 
 			Generate: &checker.Generate{
 				Pattern: `ContainsAny($0,"foobar")`,
-				Returns: []string{"bool"},
+				Returns: 1,
 			},
 		},
 		{ // strings.ContainsRune
@@ -57,7 +57,7 @@ var (
 
 			Generate: &checker.Generate{
 				Pattern: `ContainsRune($0,'ф')`,
-				Returns: []string{"bool"},
+				Returns: 1,
 			},
 		},
 		{ // 	strings.Count
@@ -71,7 +71,7 @@ var (
 
 			Generate: &checker.Generate{
 				Pattern: `Count($0, $1)`,
-				Returns: []string{"int"},
+				Returns: 1,
 			},
 		},
 		{ // strings.EqualFold
@@ -85,7 +85,7 @@ var (
 
 			Generate: &checker.Generate{
 				Pattern: `EqualFold($0,$1)`,
-				Returns: []string{"bool"},
+				Returns: 1,
 			},
 		},
 		{ // strings.HasPrefix
@@ -99,7 +99,7 @@ var (
 
 			Generate: &checker.Generate{
 				Pattern: `HasPrefix($0,$1)`,
-				Returns: []string{"bool"},
+				Returns: 1,
 			},
 		},
 		{ // strings.HasSuffix
@@ -113,7 +113,7 @@ var (
 
 			Generate: &checker.Generate{
 				Pattern: `HasSuffix($0,$1)`,
-				Returns: []string{"bool"},
+				Returns: 1,
 			},
 		},
 		{ // strings.Index
@@ -127,7 +127,7 @@ var (
 
 			Generate: &checker.Generate{
 				Pattern: `Index($0,$1)`,
-				Returns: []string{"int"},
+				Returns: 1,
 			},
 		},
 		{ // strings.IndexAny
@@ -141,7 +141,7 @@ var (
 
 			Generate: &checker.Generate{
 				Pattern: `IndexAny($0, "f")`,
-				Returns: []string{"int"},
+				Returns: 1,
 			},
 		},
 		{ // strings.IndexByte
@@ -154,8 +154,8 @@ var (
 			AltCaller:  "IndexByte",
 
 			Generate: &checker.Generate{
-				Pattern: `IndexByte($0, 'f')`,
-				Returns: []string{"int"},
+				Pattern: `IndexByte($0, byte('f'))`,
+				Returns: 1,
 			},
 		},
 		{ // strings.IndexFunc
@@ -168,8 +168,8 @@ var (
 			AltCaller:  "IndexFunc",
 
 			Generate: &checker.Generate{
-				Pattern: `IndexFunc($0, func(r rune) bool { return true })`,
-				Returns: []string{"int"},
+				Pattern: `IndexFunc($0,func(r rune) bool { return true })`,
+				Returns: 1,
 			},
 		},
 		{ // strings.IndexRune
@@ -183,7 +183,7 @@ var (
 
 			Generate: &checker.Generate{
 				Pattern: `IndexRune($0, rune('ф'))`,
-				Returns: []string{"int"},
+				Returns: 1,
 			},
 		},
 		{ // strings.LastIndex
@@ -197,7 +197,7 @@ var (
 
 			Generate: &checker.Generate{
 				Pattern: `LastIndex($0,$1)`,
-				Returns: []string{"int"},
+				Returns: 1,
 			},
 		},
 		{ // strings.LastIndexAny
@@ -211,7 +211,7 @@ var (
 
 			Generate: &checker.Generate{
 				Pattern: `LastIndexAny($0,"f")`,
-				Returns: []string{"int"},
+				Returns: 1,
 			},
 		},
 		{ // strings.LastIndexByte
@@ -224,8 +224,8 @@ var (
 			AltCaller:  "LastIndexByte",
 
 			Generate: &checker.Generate{
-				Pattern: `LastIndexByte($0, 'f')`,
-				Returns: []string{"int"},
+				Pattern: `LastIndexByte($0, byte('f'))`,
+				Returns: 1,
 			},
 		},
 		{ // strings.LastIndexFunc
@@ -239,7 +239,7 @@ var (
 
 			Generate: &checker.Generate{
 				Pattern: `LastIndexFunc($0, func(r rune) bool { return true })`,
-				Returns: []string{"int"},
+				Returns: 1,
 			},
 		},
 	}
@@ -257,7 +257,7 @@ var (
 			Generate: &checker.Generate{
 				PreCondition: `builder := strings.Builder{}`,
 				Pattern:      `Write($0)`,
-				Returns:      []string{"int", "error"},
+				Returns:      2,
 			},
 		},
 		{ // (*strings.Builder).WriteString
@@ -272,7 +272,7 @@ var (
 			Generate: &checker.Generate{
 				PreCondition: `builder := strings.Builder{}`,
 				Pattern:      `WriteString($0)`,
-				Returns:      []string{"int", "error"},
+				Returns:      2,
 			},
 		},
 		{ // (*strings.Builder).WriteString -> (*strings.Builder).WriteRune
@@ -284,11 +284,6 @@ var (
 			Args:      []int{0},
 			ArgsType:  checker.Rune,
 			AltCaller: "WriteRune",
-			Generate: &checker.Generate{
-				SkipGenerate: true,
-				Pattern:      `WriteString($0)`,
-				Returns:      []string{"int", "error"},
-			},
 		},
 		// { // (*strings.Builder).WriteString -> (*strings.Builder).WriteByte
 		// 	Targets:   checker.Strings,

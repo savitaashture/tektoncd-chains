@@ -20,7 +20,7 @@ import (
 	"github.com/tektoncd/chains/pkg/chains/storage"
 	"github.com/tektoncd/chains/pkg/config"
 	"github.com/tektoncd/chains/pkg/pipelinerunmetrics"
-	"github.com/tektoncd/chains/pkg/reconciler"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	pipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1/pipelinerun"
 	taskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1/taskrun"
@@ -34,82 +34,61 @@ import (
 	_ "github.com/tektoncd/chains/pkg/chains/formats/all"
 )
 
-// NewNamespacesScopedController returns a new controller implementation where informer is filtered
-// given a list of namespaces
-func NewNamespacesScopedController(namespaces []string) func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-		logger := logging.FromContext(ctx)
-		pipelineRunInformer := pipelineruninformer.Get(ctx)
-		taskRunInformer := taskruninformer.Get(ctx)
+func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+	logger := logging.FromContext(ctx)
+	pipelineRunInformer := pipelineruninformer.Get(ctx)
+	taskRunInformer := taskruninformer.Get(ctx)
 
-		kubeClient := kubeclient.Get(ctx)
-		pipelineClient := pipelineclient.Get(ctx)
+	kubeClient := kubeclient.Get(ctx)
+	pipelineClient := pipelineclient.Get(ctx)
 
-		psSigner := &chains.ObjectSigner{
-			SecretPath:        SecretPath,
-			Pipelineclientset: pipelineClient,
-			Recorder:          pipelinerunmetrics.Get(ctx),
-		}
+	psSigner := &chains.ObjectSigner{
+		SecretPath:        SecretPath,
+		Pipelineclientset: pipelineClient,
+		Recorder:          pipelinerunmetrics.Get(ctx),
+	}
 
-		c := &Reconciler{
-			PipelineRunSigner: psSigner,
-			Pipelineclientset: pipelineClient,
-			TaskRunLister:     taskRunInformer.Lister(),
-		}
+	c := &Reconciler{
+		PipelineRunSigner: psSigner,
+		Pipelineclientset: pipelineClient,
+		TaskRunLister:     taskRunInformer.Lister(),
+	}
+	impl := pipelinerunreconciler.NewImpl(ctx, c, func(impl *controller.Impl) controller.Options {
+		cfgStore := config.NewConfigStore(logger, func(name string, value interface{}) {
+			// get updated config
+			cfg := *value.(*config.Config)
 
-		impl := pipelinerunreconciler.NewImpl(ctx, c, func(_ *controller.Impl) controller.Options {
-			watcherStop := make(chan bool)
-
-			cfgStore := config.NewConfigStore(logger, func(_ string, value interface{}) {
-				select {
-				case watcherStop <- true:
-					logger.Info("sent close event to WatchBackends()...")
-				default:
-					logger.Info("could not send close event to WatchBackends()...")
-				}
-
-				// get updated config
-				cfg := *value.(*config.Config)
-
-				// get all backends for storing provenance
-				backends, err := storage.InitializeBackends(ctx, pipelineClient, kubeClient, cfg)
-				if err != nil {
-					logger.Error(err)
-				}
-				psSigner.Backends = backends
-
-				if err := storage.WatchBackends(ctx, watcherStop, psSigner.Backends, cfg); err != nil {
-					logger.Error(err)
-				}
-			})
-
-			// setup watches for the config names provided by client
-			cfgStore.WatchConfigs(cmw)
-
-			return controller.Options{
-				// The chains reconciler shouldn't mutate the pipelinerun's status.
-				SkipStatusUpdates: true,
-				ConfigStore:       cfgStore,
-				FinalizerName:     "chains.tekton.dev/pipelinerun", // TODO: unique name required?
+			// get all backends for storing provenance
+			backends, err := storage.InitializeBackends(ctx, pipelineClient, kubeClient, cfg)
+			if err != nil {
+				logger.Error(err)
 			}
+			psSigner.Backends = backends
 		})
 
-		c.Tracker = impl.Tracker
+		// setup watches for the config names provided by client
+		cfgStore.WatchConfigs(cmw)
 
-		if _, err := pipelineRunInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: reconciler.PipelineRunInformerFilterFunc(namespaces),
-			Handler:    controller.HandleAll(impl.Enqueue),
-		}); err != nil {
-			logger.Errorf("adding event handler for pipelinerun controller's pipelinerun informer encountered error: %v", err)
+		return controller.Options{
+			// The chains reconciler shouldn't mutate the pipelinerun's status.
+			SkipStatusUpdates: true,
+			ConfigStore:       cfgStore,
+			FinalizerName:     "chains.tekton.dev/pipelinerun", // TODO: unique name required?
 		}
+	})
 
-		if _, err := taskRunInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: reconciler.TaskRunInformerFilterFuncWithOwnership(namespaces),
-			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
-		}); err != nil {
-			logger.Errorf("adding event handler for pipelinerun controller's taskrun informer encountered error: %v", err)
-		}
+	c.Tracker = impl.Tracker
 
-		return impl
+	if _, err := pipelineRunInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue)); err != nil {
+		logger.Errorf("adding event handler for pipelinerun controller's pipelinerun informer encountered error: %w", err)
 	}
+
+	if _, err := taskRunInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		FilterFunc: controller.FilterController(&v1.PipelineRun{}),
+		Handler:    controller.HandleAll(impl.EnqueueControllerOf),
+	}); err != nil {
+		logger.Errorf("adding event handler for pipelinerun controller's taskrun informer encountered error: %w", err)
+	}
+
+	return impl
 }

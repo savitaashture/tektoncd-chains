@@ -1,4 +1,4 @@
-// Copyright 2024 Google LLC
+// Copyright 2023 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ package firestore
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -72,13 +71,10 @@ type CallOptions struct {
 func defaultGRPCClientOptions() []option.ClientOption {
 	return []option.ClientOption{
 		internaloption.WithDefaultEndpoint("firestore.googleapis.com:443"),
-		internaloption.WithDefaultEndpointTemplate("firestore.UNIVERSE_DOMAIN:443"),
 		internaloption.WithDefaultMTLSEndpoint("firestore.mtls.googleapis.com:443"),
-		internaloption.WithDefaultUniverseDomain("googleapis.com"),
 		internaloption.WithDefaultAudience("https://firestore.googleapis.com/"),
 		internaloption.WithDefaultScopes(DefaultAuthScopes()...),
 		internaloption.EnableJwtWithScope(),
-		internaloption.EnableNewAuthLibrary(),
 		option.WithGRPCDialOption(grpc.WithDefaultCallOptions(
 			grpc.MaxCallRecvMsgSize(math.MaxInt32))),
 	}
@@ -792,9 +788,7 @@ func (c *gRPCClient) Connection() *grpc.ClientConn {
 func (c *gRPCClient) setGoogleClientInfo(keyval ...string) {
 	kv := append([]string{"gl-go", gax.GoVersion}, keyval...)
 	kv = append(kv, "gapic", getVersionClient(), "gax", gax.Version, "grpc", grpc.Version)
-	c.xGoogHeaders = []string{
-		"x-goog-api-client", gax.XGoogHeader(kv...),
-	}
+	c.xGoogHeaders = []string{"x-goog-api-client", gax.XGoogHeader(kv...)}
 }
 
 // Close closes the connection to the API service. The user should invoke this when
@@ -849,12 +843,9 @@ func NewRESTClient(ctx context.Context, opts ...option.ClientOption) (*Client, e
 func defaultRESTClientOptions() []option.ClientOption {
 	return []option.ClientOption{
 		internaloption.WithDefaultEndpoint("https://firestore.googleapis.com"),
-		internaloption.WithDefaultEndpointTemplate("https://firestore.UNIVERSE_DOMAIN"),
 		internaloption.WithDefaultMTLSEndpoint("https://firestore.mtls.googleapis.com"),
-		internaloption.WithDefaultUniverseDomain("googleapis.com"),
 		internaloption.WithDefaultAudience("https://firestore.googleapis.com/"),
 		internaloption.WithDefaultScopes(DefaultAuthScopes()...),
-		internaloption.EnableNewAuthLibrary(),
 	}
 }
 
@@ -864,9 +855,7 @@ func defaultRESTClientOptions() []option.ClientOption {
 func (c *restClient) setGoogleClientInfo(keyval ...string) {
 	kv := append([]string{"gl-go", gax.GoVersion}, keyval...)
 	kv = append(kv, "gapic", getVersionClient(), "gax", gax.Version, "rest", "UNKNOWN")
-	c.xGoogHeaders = []string{
-		"x-goog-api-client", gax.XGoogHeader(kv...),
-	}
+	c.xGoogHeaders = []string{"x-goog-api-client", gax.XGoogHeader(kv...)}
 }
 
 // Close closes the connection to the API service. The user should invoke this when
@@ -1349,11 +1338,11 @@ func (c *restClient) GetDocument(ctx context.Context, req *firestorepb.GetDocume
 		}
 	}
 	if req.GetReadTime() != nil {
-		field, err := protojson.Marshal(req.GetReadTime())
+		readTime, err := protojson.Marshal(req.GetReadTime())
 		if err != nil {
 			return nil, err
 		}
-		params.Add("readTime", string(field[1:len(field)-1]))
+		params.Add("readTime", string(readTime[1:len(readTime)-1]))
 	}
 	if req.GetTransaction() != nil {
 		params.Add("transaction", fmt.Sprintf("%v", req.GetTransaction()))
@@ -1446,11 +1435,11 @@ func (c *restClient) ListDocuments(ctx context.Context, req *firestorepb.ListDoc
 			params.Add("pageToken", fmt.Sprintf("%v", req.GetPageToken()))
 		}
 		if req.GetReadTime() != nil {
-			field, err := protojson.Marshal(req.GetReadTime())
+			readTime, err := protojson.Marshal(req.GetReadTime())
 			if err != nil {
 				return nil, "", err
 			}
-			params.Add("readTime", string(field[1:len(field)-1]))
+			params.Add("readTime", string(readTime[1:len(readTime)-1]))
 		}
 		if req.GetShowMissing() {
 			params.Add("showMissing", fmt.Sprintf("%v", req.GetShowMissing()))
@@ -1539,11 +1528,11 @@ func (c *restClient) UpdateDocument(ctx context.Context, req *firestorepb.Update
 		params.Add("currentDocument.exists", fmt.Sprintf("%v", req.GetCurrentDocument().GetExists()))
 	}
 	if req.GetCurrentDocument().GetUpdateTime() != nil {
-		field, err := protojson.Marshal(req.GetCurrentDocument().GetUpdateTime())
+		updateTime, err := protojson.Marshal(req.GetCurrentDocument().GetUpdateTime())
 		if err != nil {
 			return nil, err
 		}
-		params.Add("currentDocument.updateTime", string(field[1:len(field)-1]))
+		params.Add("currentDocument.updateTime", string(updateTime[1:len(updateTime)-1]))
 	}
 	if items := req.GetMask().GetFieldPaths(); len(items) > 0 {
 		for _, item := range items {
@@ -1619,11 +1608,11 @@ func (c *restClient) DeleteDocument(ctx context.Context, req *firestorepb.Delete
 		params.Add("currentDocument.exists", fmt.Sprintf("%v", req.GetCurrentDocument().GetExists()))
 	}
 	if req.GetCurrentDocument().GetUpdateTime() != nil {
-		field, err := protojson.Marshal(req.GetCurrentDocument().GetUpdateTime())
+		updateTime, err := protojson.Marshal(req.GetCurrentDocument().GetUpdateTime())
 		if err != nil {
 			return err
 		}
-		params.Add("currentDocument.updateTime", string(field[1:len(field)-1]))
+		params.Add("currentDocument.updateTime", string(updateTime[1:len(updateTime)-1]))
 	}
 
 	baseUrl.RawQuery = params.Encode()
@@ -1749,7 +1738,7 @@ func (c *batchGetDocumentsRESTClient) Trailer() metadata.MD {
 
 func (c *batchGetDocumentsRESTClient) CloseSend() error {
 	// This is a no-op to fulfill the interface.
-	return errors.New("this method is not implemented for a server-stream")
+	return fmt.Errorf("this method is not implemented for a server-stream")
 }
 
 func (c *batchGetDocumentsRESTClient) Context() context.Context {
@@ -1758,12 +1747,12 @@ func (c *batchGetDocumentsRESTClient) Context() context.Context {
 
 func (c *batchGetDocumentsRESTClient) SendMsg(m interface{}) error {
 	// This is a no-op to fulfill the interface.
-	return errors.New("this method is not implemented for a server-stream")
+	return fmt.Errorf("this method is not implemented for a server-stream")
 }
 
 func (c *batchGetDocumentsRESTClient) RecvMsg(m interface{}) error {
 	// This is a no-op to fulfill the interface.
-	return errors.New("this method is not implemented, use Recv")
+	return fmt.Errorf("this method is not implemented, use Recv")
 }
 
 // BeginTransaction starts a new transaction.
@@ -2035,7 +2024,7 @@ func (c *runQueryRESTClient) Trailer() metadata.MD {
 
 func (c *runQueryRESTClient) CloseSend() error {
 	// This is a no-op to fulfill the interface.
-	return errors.New("this method is not implemented for a server-stream")
+	return fmt.Errorf("this method is not implemented for a server-stream")
 }
 
 func (c *runQueryRESTClient) Context() context.Context {
@@ -2044,12 +2033,12 @@ func (c *runQueryRESTClient) Context() context.Context {
 
 func (c *runQueryRESTClient) SendMsg(m interface{}) error {
 	// This is a no-op to fulfill the interface.
-	return errors.New("this method is not implemented for a server-stream")
+	return fmt.Errorf("this method is not implemented for a server-stream")
 }
 
 func (c *runQueryRESTClient) RecvMsg(m interface{}) error {
 	// This is a no-op to fulfill the interface.
-	return errors.New("this method is not implemented, use Recv")
+	return fmt.Errorf("this method is not implemented, use Recv")
 }
 
 // RunAggregationQuery runs an aggregation query.
@@ -2148,7 +2137,7 @@ func (c *runAggregationQueryRESTClient) Trailer() metadata.MD {
 
 func (c *runAggregationQueryRESTClient) CloseSend() error {
 	// This is a no-op to fulfill the interface.
-	return errors.New("this method is not implemented for a server-stream")
+	return fmt.Errorf("this method is not implemented for a server-stream")
 }
 
 func (c *runAggregationQueryRESTClient) Context() context.Context {
@@ -2157,12 +2146,12 @@ func (c *runAggregationQueryRESTClient) Context() context.Context {
 
 func (c *runAggregationQueryRESTClient) SendMsg(m interface{}) error {
 	// This is a no-op to fulfill the interface.
-	return errors.New("this method is not implemented for a server-stream")
+	return fmt.Errorf("this method is not implemented for a server-stream")
 }
 
 func (c *runAggregationQueryRESTClient) RecvMsg(m interface{}) error {
 	// This is a no-op to fulfill the interface.
-	return errors.New("this method is not implemented, use Recv")
+	return fmt.Errorf("this method is not implemented, use Recv")
 }
 
 // PartitionQuery partitions a query by returning partition cursors that can be used to run
@@ -2261,7 +2250,7 @@ func (c *restClient) PartitionQuery(ctx context.Context, req *firestorepb.Partit
 //
 // This method is not supported for the REST transport.
 func (c *restClient) Write(ctx context.Context, opts ...gax.CallOption) (firestorepb.Firestore_WriteClient, error) {
-	return nil, errors.New("Write not yet supported for REST clients")
+	return nil, fmt.Errorf("Write not yet supported for REST clients")
 }
 
 // Listen listens to changes. This method is only available via gRPC or WebChannel
@@ -2269,7 +2258,7 @@ func (c *restClient) Write(ctx context.Context, opts ...gax.CallOption) (firesto
 //
 // This method is not supported for the REST transport.
 func (c *restClient) Listen(ctx context.Context, opts ...gax.CallOption) (firestorepb.Firestore_ListenClient, error) {
-	return nil, errors.New("Listen not yet supported for REST clients")
+	return nil, fmt.Errorf("Listen not yet supported for REST clients")
 }
 
 // ListCollectionIds lists all the collection IDs underneath a document.
@@ -2751,4 +2740,192 @@ func (c *restClient) ListOperations(ctx context.Context, req *longrunningpb.List
 	it.pageInfo.Token = req.GetPageToken()
 
 	return it
+}
+
+// CursorIterator manages a stream of *firestorepb.Cursor.
+type CursorIterator struct {
+	items    []*firestorepb.Cursor
+	pageInfo *iterator.PageInfo
+	nextFunc func() error
+
+	// Response is the raw response for the current page.
+	// It must be cast to the RPC response type.
+	// Calling Next() or InternalFetch() updates this value.
+	Response interface{}
+
+	// InternalFetch is for use by the Google Cloud Libraries only.
+	// It is not part of the stable interface of this package.
+	//
+	// InternalFetch returns results from a single call to the underlying RPC.
+	// The number of results is no greater than pageSize.
+	// If there are no more results, nextPageToken is empty and err is nil.
+	InternalFetch func(pageSize int, pageToken string) (results []*firestorepb.Cursor, nextPageToken string, err error)
+}
+
+// PageInfo supports pagination. See the google.golang.org/api/iterator package for details.
+func (it *CursorIterator) PageInfo() *iterator.PageInfo {
+	return it.pageInfo
+}
+
+// Next returns the next result. Its second return value is iterator.Done if there are no more
+// results. Once Next returns Done, all subsequent calls will return Done.
+func (it *CursorIterator) Next() (*firestorepb.Cursor, error) {
+	var item *firestorepb.Cursor
+	if err := it.nextFunc(); err != nil {
+		return item, err
+	}
+	item = it.items[0]
+	it.items = it.items[1:]
+	return item, nil
+}
+
+func (it *CursorIterator) bufLen() int {
+	return len(it.items)
+}
+
+func (it *CursorIterator) takeBuf() interface{} {
+	b := it.items
+	it.items = nil
+	return b
+}
+
+// DocumentIterator manages a stream of *firestorepb.Document.
+type DocumentIterator struct {
+	items    []*firestorepb.Document
+	pageInfo *iterator.PageInfo
+	nextFunc func() error
+
+	// Response is the raw response for the current page.
+	// It must be cast to the RPC response type.
+	// Calling Next() or InternalFetch() updates this value.
+	Response interface{}
+
+	// InternalFetch is for use by the Google Cloud Libraries only.
+	// It is not part of the stable interface of this package.
+	//
+	// InternalFetch returns results from a single call to the underlying RPC.
+	// The number of results is no greater than pageSize.
+	// If there are no more results, nextPageToken is empty and err is nil.
+	InternalFetch func(pageSize int, pageToken string) (results []*firestorepb.Document, nextPageToken string, err error)
+}
+
+// PageInfo supports pagination. See the google.golang.org/api/iterator package for details.
+func (it *DocumentIterator) PageInfo() *iterator.PageInfo {
+	return it.pageInfo
+}
+
+// Next returns the next result. Its second return value is iterator.Done if there are no more
+// results. Once Next returns Done, all subsequent calls will return Done.
+func (it *DocumentIterator) Next() (*firestorepb.Document, error) {
+	var item *firestorepb.Document
+	if err := it.nextFunc(); err != nil {
+		return item, err
+	}
+	item = it.items[0]
+	it.items = it.items[1:]
+	return item, nil
+}
+
+func (it *DocumentIterator) bufLen() int {
+	return len(it.items)
+}
+
+func (it *DocumentIterator) takeBuf() interface{} {
+	b := it.items
+	it.items = nil
+	return b
+}
+
+// OperationIterator manages a stream of *longrunningpb.Operation.
+type OperationIterator struct {
+	items    []*longrunningpb.Operation
+	pageInfo *iterator.PageInfo
+	nextFunc func() error
+
+	// Response is the raw response for the current page.
+	// It must be cast to the RPC response type.
+	// Calling Next() or InternalFetch() updates this value.
+	Response interface{}
+
+	// InternalFetch is for use by the Google Cloud Libraries only.
+	// It is not part of the stable interface of this package.
+	//
+	// InternalFetch returns results from a single call to the underlying RPC.
+	// The number of results is no greater than pageSize.
+	// If there are no more results, nextPageToken is empty and err is nil.
+	InternalFetch func(pageSize int, pageToken string) (results []*longrunningpb.Operation, nextPageToken string, err error)
+}
+
+// PageInfo supports pagination. See the google.golang.org/api/iterator package for details.
+func (it *OperationIterator) PageInfo() *iterator.PageInfo {
+	return it.pageInfo
+}
+
+// Next returns the next result. Its second return value is iterator.Done if there are no more
+// results. Once Next returns Done, all subsequent calls will return Done.
+func (it *OperationIterator) Next() (*longrunningpb.Operation, error) {
+	var item *longrunningpb.Operation
+	if err := it.nextFunc(); err != nil {
+		return item, err
+	}
+	item = it.items[0]
+	it.items = it.items[1:]
+	return item, nil
+}
+
+func (it *OperationIterator) bufLen() int {
+	return len(it.items)
+}
+
+func (it *OperationIterator) takeBuf() interface{} {
+	b := it.items
+	it.items = nil
+	return b
+}
+
+// StringIterator manages a stream of string.
+type StringIterator struct {
+	items    []string
+	pageInfo *iterator.PageInfo
+	nextFunc func() error
+
+	// Response is the raw response for the current page.
+	// It must be cast to the RPC response type.
+	// Calling Next() or InternalFetch() updates this value.
+	Response interface{}
+
+	// InternalFetch is for use by the Google Cloud Libraries only.
+	// It is not part of the stable interface of this package.
+	//
+	// InternalFetch returns results from a single call to the underlying RPC.
+	// The number of results is no greater than pageSize.
+	// If there are no more results, nextPageToken is empty and err is nil.
+	InternalFetch func(pageSize int, pageToken string) (results []string, nextPageToken string, err error)
+}
+
+// PageInfo supports pagination. See the google.golang.org/api/iterator package for details.
+func (it *StringIterator) PageInfo() *iterator.PageInfo {
+	return it.pageInfo
+}
+
+// Next returns the next result. Its second return value is iterator.Done if there are no more
+// results. Once Next returns Done, all subsequent calls will return Done.
+func (it *StringIterator) Next() (string, error) {
+	var item string
+	if err := it.nextFunc(); err != nil {
+		return item, err
+	}
+	item = it.items[0]
+	it.items = it.items[1:]
+	return item, nil
+}
+
+func (it *StringIterator) bufLen() int {
+	return len(it.items)
+}
+
+func (it *StringIterator) takeBuf() interface{} {
+	b := it.items
+	it.items = nil
+	return b
 }

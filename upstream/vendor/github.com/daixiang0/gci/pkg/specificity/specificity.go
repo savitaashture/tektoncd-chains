@@ -3,12 +3,11 @@ package specificity
 type specificityClass int
 
 const (
-	MisMatchClass    = 0
-	DefaultClass     = 10
-	StandardClass    = 20
-	MatchClass       = 30
-	NameClass        = 40
-	LocalModuleClass = 50
+	MisMatchClass = 0
+	DefaultClass  = 10
+	StandardClass = 20
+	MatchClass    = 30
+	NameClass     = 40
 )
 
 // MatchSpecificity is used to determine which section matches an import best

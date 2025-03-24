@@ -14,8 +14,6 @@ import (
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/analysis/passes/internal/analysisutil"
 	"golang.org/x/tools/go/ast/inspector"
-	"golang.org/x/tools/internal/aliases"
-	"golang.org/x/tools/internal/typesinternal"
 )
 
 const Doc = `check for mistakes using HTTP responses
@@ -118,8 +116,7 @@ func isHTTPFuncOrMethodOnClient(info *types.Info, expr *ast.CallExpr) bool {
 	if res.Len() != 2 {
 		return false // the function called does not return two values.
 	}
-	isPtr, named := typesinternal.ReceiverNamed(res.At(0))
-	if !isPtr || named == nil || !analysisutil.IsNamedType(named, "net/http", "Response") {
+	if ptr, ok := res.At(0).Type().(*types.Pointer); !ok || !analysisutil.IsNamedType(ptr.Elem(), "net/http", "Response") {
 		return false // the first return type is not *http.Response.
 	}
 
@@ -137,7 +134,7 @@ func isHTTPFuncOrMethodOnClient(info *types.Info, expr *ast.CallExpr) bool {
 	if analysisutil.IsNamedType(typ, "net/http", "Client") {
 		return true // method on http.Client.
 	}
-	ptr, ok := aliases.Unalias(typ).(*types.Pointer)
+	ptr, ok := typ.(*types.Pointer)
 	return ok && analysisutil.IsNamedType(ptr.Elem(), "net/http", "Client") // method on *http.Client.
 }
 

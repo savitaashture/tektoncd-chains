@@ -71,6 +71,7 @@ func (*ConfusingNamingRule) Name() string {
 
 // checkMethodName checks if a given method/function name is similar (just case differences) to other method/function of the same struct/file.
 func checkMethodName(holder string, id *ast.Ident, w *lintConfusingNames) {
+
 	if id.Name == "init" && holder == defaultStructName {
 		// ignore init functions
 		return
@@ -111,7 +112,7 @@ func checkMethodName(holder string, id *ast.Ident, w *lintConfusingNames) {
 		pkgm.methods[holder] = make(map[string]*referenceMethod, 1)
 	}
 
-	// update the block list
+	// update the black list
 	if pkgm.methods[holder] == nil {
 		println("no entry for '", holder, "'")
 	}
@@ -138,32 +139,16 @@ func getStructName(r *ast.FieldList) string {
 
 	switch v := t.(type) {
 	case *ast.StarExpr:
-		return extractFromStarExpr(v)
+		t = v.X
 	case *ast.IndexExpr:
-		return extractFromIndexExpr(v)
-	case *ast.Ident:
-		return v.Name
+		t = v.X
 	}
 
-	return defaultStructName
-}
-
-func extractFromStarExpr(expr *ast.StarExpr) string {
-	switch v := expr.X.(type) {
-	case *ast.IndexExpr:
-		return extractFromIndexExpr(v)
-	case *ast.Ident:
-		return v.Name
+	if p, _ := t.(*ast.Ident); p != nil {
+		result = p.Name
 	}
-	return defaultStructName
-}
 
-func extractFromIndexExpr(expr *ast.IndexExpr) string {
-	switch v := expr.X.(type) {
-	case *ast.Ident:
-		return v.Name
-	}
-	return defaultStructName
+	return result
 }
 
 func checkStructFields(fields *ast.FieldList, structName string, w *lintConfusingNames) {

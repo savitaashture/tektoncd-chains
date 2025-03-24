@@ -5,7 +5,6 @@ import (
 	"go/ast"
 	"go/types"
 	"regexp"
-	"strings"
 
 	"golang.org/x/tools/go/analysis"
 )
@@ -45,7 +44,6 @@ const (
 	resultNoEnforceComment     = "has no enforce comment"
 	resultEnumMembersAccounted = "required enum members accounted for"
 	resultDefaultCaseSuffices  = "default case satisfies exhaustiveness"
-	resultMissingDefaultCase   = "missing required default case"
 	resultReportedDiagnostic   = "reported diagnostic"
 	resultEnumTypes            = "invalid or empty composing enum types"
 )
@@ -54,45 +52,9 @@ const (
 type switchConfig struct {
 	explicit                   bool
 	defaultSignifiesExhaustive bool
-	defaultCaseRequired        bool
 	checkGenerated             bool
 	ignoreConstant             *regexp.Regexp // can be nil
 	ignoreType                 *regexp.Regexp // can be nil
-}
-
-// There are few possibilities, and often none, so we use a possibly-nil slice
-func userDirectives(comments []*ast.CommentGroup) []string {
-	var directives []string
-	for _, c := range comments {
-		for _, cc := range c.List {
-			// The order matters here: we always want to check the longest first.
-			for _, d := range []string{
-				enforceDefaultCaseRequiredComment,
-				ignoreDefaultCaseRequiredComment,
-				enforceComment,
-				ignoreComment,
-			} {
-				if strings.HasPrefix(cc.Text, d) {
-					directives = append(directives, d)
-					// The break here is important: once we associate a comment
-					// with a particular (longest-possible) directive, we don't want
-					// to map to another!
-					break
-				}
-			}
-		}
-	}
-	return directives
-}
-
-// Can be replaced with slices.Contains with go1.21
-func directivesIncludes(directives []string, d string) bool {
-	for _, ud := range directives {
-		if ud == d {
-			return true
-		}
-	}
-	return false
 }
 
 // switchChecker returns a node visitor that checks exhaustiveness of
@@ -118,26 +80,16 @@ func switchChecker(pass *analysis.Pass, cfg switchConfig, generated boolCache, c
 		sw := n.(*ast.SwitchStmt)
 
 		switchComments := comments.get(pass.Fset, file)[sw]
-		uDirectives := userDirectives(switchComments)
-		if !cfg.explicit && directivesIncludes(uDirectives, ignoreComment) {
+		if !cfg.explicit && hasCommentPrefix(switchComments, ignoreComment) {
 			// Skip checking of this switch statement due to ignore
 			// comment. Still return true because there may be nested
 			// switch statements that are not to be ignored.
 			return true, resultIgnoreComment
 		}
-		if cfg.explicit && !directivesIncludes(uDirectives, enforceComment) {
+		if cfg.explicit && !hasCommentPrefix(switchComments, enforceComment) {
 			// Skip checking of this switch statement due to missing
 			// enforce comment.
 			return true, resultNoEnforceComment
-		}
-		requireDefaultCase := cfg.defaultCaseRequired
-		if directivesIncludes(uDirectives, ignoreDefaultCaseRequiredComment) {
-			requireDefaultCase = false
-		}
-		if directivesIncludes(uDirectives, enforceDefaultCaseRequiredComment) {
-			// We have "if" instead of "else if" here in case of conflicting ignore/enforce directives.
-			// In that case, because this is second, we will default to enforcing.
-			requireDefaultCase = true
 		}
 
 		if sw.Tag == nil {
@@ -162,21 +114,13 @@ func switchChecker(pass *analysis.Pass, cfg switchConfig, generated boolCache, c
 			checkl.add(e.typ, e.members, pass.Pkg == e.typ.Pkg())
 		}
 
-		defaultCaseExists := analyzeSwitchClauses(sw, pass.TypesInfo, checkl.found)
-		if !defaultCaseExists && requireDefaultCase {
-			// Even if the switch explicitly enumerates all the
-			// enum values, the user has still required all switches
-			// to have a default case. We check this first to avoid
-			// early-outs
-			pass.Report(makeMissingDefaultDiagnostic(sw, dedupEnumTypes(toEnumTypes(es))))
-			return true, resultMissingDefaultCase
-		}
+		def := analyzeSwitchClauses(sw, pass.TypesInfo, checkl.found)
 		if len(checkl.remaining()) == 0 {
 			// All enum members accounted for.
 			// Nothing to report.
 			return true, resultEnumMembersAccounted
 		}
-		if defaultCaseExists && cfg.defaultSignifiesExhaustive {
+		if def && cfg.defaultSignifiesExhaustive {
 			// Though enum members are not accounted for, the
 			// existence of the default case signifies
 			// exhaustiveness.  So don't report.
@@ -220,17 +164,6 @@ func makeSwitchDiagnostic(sw *ast.SwitchStmt, enumTypes []enumType, missing map[
 			"missing cases in switch of type %s: %s",
 			diagnosticEnumTypes(enumTypes),
 			diagnosticGroups(groupify(missing, enumTypes)),
-		),
-	}
-}
-
-func makeMissingDefaultDiagnostic(sw *ast.SwitchStmt, enumTypes []enumType) analysis.Diagnostic {
-	return analysis.Diagnostic{
-		Pos: sw.Pos(),
-		End: sw.End(),
-		Message: fmt.Sprintf(
-			"missing default case in switch of type %s",
-			diagnosticEnumTypes(enumTypes),
 		),
 	}
 }

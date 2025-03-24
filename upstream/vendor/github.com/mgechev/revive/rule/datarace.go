@@ -16,7 +16,7 @@ func (*DataRaceRule) Apply(file *lint.File, _ lint.Arguments) []lint.Failure {
 	onFailure := func(failure lint.Failure) {
 		failures = append(failures, failure)
 	}
-	w := lintDataRaces{onFailure: onFailure, go122for: file.Pkg.IsAtLeastGo122()}
+	w := lintDataRaces{onFailure: onFailure}
 
 	ast.Walk(w, file.AST)
 
@@ -30,7 +30,6 @@ func (*DataRaceRule) Name() string {
 
 type lintDataRaces struct {
 	onFailure func(failure lint.Failure)
-	go122for  bool
 }
 
 func (w lintDataRaces) Visit(n ast.Node) ast.Visitor {
@@ -48,13 +47,13 @@ func (w lintDataRaces) Visit(n ast.Node) ast.Visitor {
 	if results != nil {
 		returnIDs = w.ExtractReturnIDs(results.List)
 	}
-	fl := &lintFunctionForDataRaces{onFailure: w.onFailure, returnIDs: returnIDs, rangeIDs: map[*ast.Object]struct{}{}, go122for: w.go122for}
+	fl := &lintFunctionForDataRaces{onFailure: w.onFailure, returnIDs: returnIDs, rangeIDs: map[*ast.Object]struct{}{}}
 	ast.Walk(fl, node.Body)
 
 	return nil
 }
 
-func (lintDataRaces) ExtractReturnIDs(fields []*ast.Field) map[*ast.Object]struct{} {
+func (w lintDataRaces) ExtractReturnIDs(fields []*ast.Field) map[*ast.Object]struct{} {
 	r := map[*ast.Object]struct{}{}
 	for _, f := range fields {
 		for _, id := range f.Names {
@@ -70,7 +69,6 @@ type lintFunctionForDataRaces struct {
 	onFailure func(failure lint.Failure)
 	returnIDs map[*ast.Object]struct{}
 	rangeIDs  map[*ast.Object]struct{}
-	go122for  bool
 }
 
 func (w lintFunctionForDataRaces) Visit(node ast.Node) ast.Visitor {
@@ -113,14 +111,14 @@ func (w lintFunctionForDataRaces) Visit(node ast.Node) ast.Visitor {
 			return ok
 		}
 
-		ids := pick(funcLit.Body, selectIDs)
+		ids := pick(funcLit.Body, selectIDs, nil)
 		for _, id := range ids {
 			id := id.(*ast.Ident)
 			_, isRangeID := w.rangeIDs[id.Obj]
 			_, isReturnID := w.returnIDs[id.Obj]
 
 			switch {
-			case isRangeID && !w.go122for:
+			case isRangeID:
 				w.onFailure(lint.Failure{
 					Confidence: 1,
 					Node:       id,

@@ -1,11 +1,13 @@
 run:
   timeout: 2m
+  skip-files: []
 
 linters-settings:
   govet:
     enable-all: true
     disable:
       - fieldalignment
+      - shadow # FIXME(ldez) must be fixed
   gocyclo:
     min-complexity: 16
   goconst:
@@ -95,7 +97,7 @@ linters:
 
 issues:
   exclude-use-default: false
-  max-issues-per-linter: 0
+  max-per-linter: 0
   max-same-issues: 0
   exclude:
     - 'ST1000: at least one file in a package should have a package comment'

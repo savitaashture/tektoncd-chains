@@ -100,33 +100,44 @@ deprecation window timers begin from when the release is published.
 
 ## Current Releases
 
-### v0.22 (LTS)
-- **Latest Release**: [v0.22.2][v0-22-2] (2024-09-16)
-- **Initial Release**: [v0.22.0][v0-22-0] (2024-08-19)
-
-[v0-22-0]: https://github.com/tektoncd/chains/releases/tag/v0.22.0
-[v0-22-2]: https://github.com/tektoncd/chains/releases/tag/v0.22.2
-
-### v0.21 (LTS)
-- **Latest Release**: [v0.21.1][v0-21-1] (2024-06-10)
-- **Initial Release**: [v0.21.0][v0-21-0] (2024-05-23)
-
-[v0-21-0]: https://github.com/tektoncd/chains/releases/tag/v0.21.0
-[v0-21-1]: https://github.com/tektoncd/chains/releases/tag/v0.21.1
-
-### v0.20 (LTS)
-
-- **Latest Release**: [v0.20.0][v0-20-0] (2024-01-31)
-- **Initial Release**: [v0.20.0][v0-20-0] (2024-01-31)
-
-[v0-20-0]: https://github.com/tektoncd/chains/releases/tag/v0.20.0
-
 ### v0.19 (LTS)
 
 - **Latest Release**: [v0.19.0][v0-19-0] (2023-10-26)
 - **Initial Release**: [v0.19.0][v0-19-0] (2023-10-26)
 
 [v0-19-0]: https://github.com/tektoncd/chains/releases/tag/v0.19.0
+
+### v0.18 (not LTS)
+
+- **Latest Release**: [v0.18.1][v0-18-1] (2023-10-18)
+- **Initial Release**: [v0.18.0][v0-18-0] (2023-09-20)
+
+[v0-18-1]: https://github.com/tektoncd/chains/releases/tag/v0.18.1
+[v0-18-0]: https://github.com/tektoncd/chains/releases/tag/v0.18.0
+
+### v0.17 (not LTS)
+
+- **Latest Release**: [v0.17.1][v0-17-1] (2023-10-18)
+- **Initial Release**: [v0.17.0][v0-17-0] (2023-07-26)
+
+[v0-17-1]: https://github.com/tektoncd/chains/releases/tag/v0.17.1
+[v0-17-0]: https://github.com/tektoncd/chains/releases/tag/v0.17.0
+
+### v0.16 (LTS)
+
+- **Latest Release**: [v0.16.1][v0-16-1] (2023-10-18)
+- **Initial Release**: [v0.16.0][v0-16-0] (2022-12-20)
+
+[v0-16-1]: https://github.com/tektoncd/chains/releases/tag/v0.16.1
+[v0-16-0]: https://github.com/tektoncd/chains/releases/tag/v0.16.0
+
+### v0.13 (LTS)
+
+- **Latest Release**: [v0.13.2][v0-13-2] (2023-10-18)
+- **Initial Release**: [v0.13.0][v0-13-0] (2022-11-08)
+
+[v0-13-2]: https://github.com/tektoncd/chains/releases/tag/v0.13.2
+[v0-13-0]: https://github.com/tektoncd/chains/releases/tag/v0.13.0
 
 ## Older Releases
 

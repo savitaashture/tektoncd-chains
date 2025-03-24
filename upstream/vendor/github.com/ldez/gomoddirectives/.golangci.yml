@@ -1,5 +1,7 @@
 run:
-  timeout: 2m
+  deadline: 2m
+  skip-files: []
+  skip-dirs: []
 
 linters-settings:
   govet:
@@ -14,13 +16,10 @@ linters-settings:
   gofumpt:
     extra-rules: true
   depguard:
-    rules:
-      main:
-        deny:
-          - pkg: "github.com/instana/testify"
-            desc: not allowed
-          - pkg: "github.com/pkg/errors"
-            desc: Should be replaced by standard lib errors package
+    list-type: blacklist
+    include-go-root: false
+    packages:
+      - github.com/pkg/errors
   godox:
     keywords:
       - FIXME
@@ -52,19 +51,12 @@ linters-settings:
 linters:
   enable-all: true
   disable:
-    - deadcode # deprecated
-    - exhaustivestruct # deprecated
-    - golint # deprecated
-    - ifshort # deprecated
-    - interfacer # deprecated
     - maligned # deprecated
-    - nosnakecase # deprecated
+    - interfacer # deprecated
+    - golint # deprecated
     - scopelint # deprecated
-    - structcheck # deprecated
-    - varcheck # deprecated
     - sqlclosecheck # not relevant (SQL)
     - rowserrcheck # not relevant (SQL)
-    - execinquery # not relevant (SQL)
     - cyclop # duplicate of gocyclo
     - lll
     - dupl
@@ -79,16 +71,14 @@ linters:
     - goerr113
     - wrapcheck
     - exhaustive
-    - exhaustruct
+    - exhaustivestruct
     - varnamelen
 
 issues:
   exclude-use-default: false
-  max-issues-per-linter: 0
+  max-per-linter: 0
   max-same-issues: 0
-  exclude: [
-    'package-comments: should have a package comment'
-  ]
+  exclude: []
   exclude-rules:
     - path: "(.+)_test.go"
       linters:
@@ -96,7 +86,3 @@ issues:
       - goconst
     - path: cmd/gomoddirectives/gomoddirectives.go
       text: 'use of `fmt.Println` forbidden'
-
-output:
-  show-stats: true
-  sort-results: true

@@ -6,52 +6,36 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
+	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Deletes the specified alias.
+// Deletes the specified alias. Adding, deleting, or updating an alias can allow
+// or deny permission to the KMS key. For details, see ABAC for KMS (https://docs.aws.amazon.com/kms/latest/developerguide/abac.html)
+// in the Key Management Service Developer Guide. Because an alias is not a
+// property of a KMS key, you can delete and change the aliases of a KMS key
+// without affecting the KMS key. Also, aliases do not appear in the response from
+// the DescribeKey operation. To get the aliases of all KMS keys, use the
+// ListAliases operation. Each KMS key can have multiple aliases. To change the
+// alias of a KMS key, use DeleteAlias to delete the current alias and CreateAlias
+// to create a new alias. To associate an existing alias with a different KMS key,
+// call UpdateAlias . Cross-account use: No. You cannot perform this operation on
+// an alias in a different Amazon Web Services account. Required permissions
+//   - kms:DeleteAlias (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
+//     on the alias (IAM policy).
+//   - kms:DeleteAlias (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
+//     on the KMS key (key policy).
 //
-// Adding, deleting, or updating an alias can allow or deny permission to the KMS
-// key. For details, see [ABAC for KMS]in the Key Management Service Developer Guide.
-//
-// Because an alias is not a property of a KMS key, you can delete and change the
-// aliases of a KMS key without affecting the KMS key. Also, aliases do not appear
-// in the response from the DescribeKeyoperation. To get the aliases of all KMS keys, use the ListAliases
-// operation.
-//
-// Each KMS key can have multiple aliases. To change the alias of a KMS key, use DeleteAlias
-// to delete the current alias and CreateAliasto create a new alias. To associate an existing
-// alias with a different KMS key, call UpdateAlias.
-//
-// Cross-account use: No. You cannot perform this operation on an alias in a
-// different Amazon Web Services account.
-//
-// # Required permissions
-//
-// [kms:DeleteAlias]
-//   - on the alias (IAM policy).
-//
-// [kms:DeleteAlias]
-//   - on the KMS key (key policy).
-//
-// For details, see [Controlling access to aliases] in the Key Management Service Developer Guide.
-//
-// Related operations:
-//
-// # CreateAlias
-//
-// # ListAliases
-//
-// # UpdateAlias
+// For details, see Controlling access to aliases (https://docs.aws.amazon.com/kms/latest/developerguide/kms-alias.html#alias-access)
+// in the Key Management Service Developer Guide. Related operations:
+//   - CreateAlias
+//   - ListAliases
+//   - UpdateAlias
 //
 // Eventual consistency: The KMS API follows an eventual consistency model. For
-// more information, see [KMS eventual consistency].
-//
-// [ABAC for KMS]: https://docs.aws.amazon.com/kms/latest/developerguide/abac.html
-// [kms:DeleteAlias]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html
-// [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html
-// [Controlling access to aliases]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-alias.html#alias-access
+// more information, see KMS eventual consistency (https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html)
+// .
 func (c *Client) DeleteAlias(ctx context.Context, params *DeleteAliasInput, optFns ...func(*Options)) (*DeleteAliasOutput, error) {
 	if params == nil {
 		params = &DeleteAliasInput{}
@@ -107,28 +91,25 @@ func (c *Client) addOperationDeleteAliasMiddlewares(stack *middleware.Stack, opt
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addClientRequestID(stack); err != nil {
+	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
 		return err
 	}
-	if err = addComputeContentLength(stack); err != nil {
+	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addComputePayloadSHA256(stack); err != nil {
+	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetryMiddlewares(stack, options); err != nil {
 		return err
 	}
-	if err = addRawResponseToMetadata(stack); err != nil {
+	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = addSpanRetryLoop(stack, options); err != nil {
+	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -143,19 +124,13 @@ func (c *Client) addOperationDeleteAliasMiddlewares(stack *middleware.Stack, opt
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
-		return err
-	}
-	if err = addUserAgentRetryMode(stack, options); err != nil {
-		return err
-	}
 	if err = addOpDeleteAliasValidationMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDeleteAlias(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = addRecursionDetection(stack); err != nil {
+	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -168,18 +143,6 @@ func (c *Client) addOperationDeleteAliasMiddlewares(stack *middleware.Stack, opt
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
-		return err
-	}
-	if err = addSpanInitializeStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanInitializeEnd(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

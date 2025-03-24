@@ -6,45 +6,36 @@ import (
 	"context"
 	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
+	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Returns a random byte string that is cryptographically secure.
-//
-// You must use the NumberOfBytes parameter to specify the length of the random
-// byte string. There is no default value for string length.
-//
-// By default, the random byte string is generated in KMS. To generate the byte
-// string in the CloudHSM cluster associated with an CloudHSM key store, use the
-// CustomKeyStoreId parameter.
-//
-// GenerateRandom also supports [Amazon Web Services Nitro Enclaves], which provide an isolated compute environment in
-// Amazon EC2. To call GenerateRandom for a Nitro enclave, use the [Amazon Web Services Nitro Enclaves SDK] or any Amazon
-// Web Services SDK. Use the Recipient parameter to provide the attestation
-// document for the enclave. Instead of plaintext bytes, the response includes the
-// plaintext bytes encrypted under the public key from the attestation document (
-// CiphertextForRecipient ).For information about the interaction between KMS and
-// Amazon Web Services Nitro Enclaves, see [How Amazon Web Services Nitro Enclaves uses KMS]in the Key Management Service Developer
-// Guide.
-//
-// For more information about entropy and random number generation, see [Key Management Service Cryptographic Details].
-//
+// Returns a random byte string that is cryptographically secure. You must use the
+// NumberOfBytes parameter to specify the length of the random byte string. There
+// is no default value for string length. By default, the random byte string is
+// generated in KMS. To generate the byte string in the CloudHSM cluster associated
+// with an CloudHSM key store, use the CustomKeyStoreId parameter. GenerateRandom
+// also supports Amazon Web Services Nitro Enclaves (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/nitro-enclave.html)
+// , which provide an isolated compute environment in Amazon EC2. To call
+// GenerateRandom for a Nitro enclave, use the Amazon Web Services Nitro Enclaves
+// SDK (https://docs.aws.amazon.com/enclaves/latest/user/developing-applications.html#sdk)
+// or any Amazon Web Services SDK. Use the Recipient parameter to provide the
+// attestation document for the enclave. Instead of plaintext bytes, the response
+// includes the plaintext bytes encrypted under the public key from the attestation
+// document ( CiphertextForRecipient ).For information about the interaction
+// between KMS and Amazon Web Services Nitro Enclaves, see How Amazon Web Services
+// Nitro Enclaves uses KMS (https://docs.aws.amazon.com/kms/latest/developerguide/services-nitro-enclaves.html)
+// in the Key Management Service Developer Guide. For more information about
+// entropy and random number generation, see Key Management Service Cryptographic
+// Details (https://docs.aws.amazon.com/kms/latest/cryptographic-details/) .
 // Cross-account use: Not applicable. GenerateRandom does not use any
-// account-specific resources, such as KMS keys.
-//
-// Required permissions: [kms:GenerateRandom] (IAM policy)
-//
-// Eventual consistency: The KMS API follows an eventual consistency model. For
-// more information, see [KMS eventual consistency].
-//
-// [kms:GenerateRandom]: https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html
-// [Amazon Web Services Nitro Enclaves]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/nitro-enclave.html
-// [Key Management Service Cryptographic Details]: https://docs.aws.amazon.com/kms/latest/cryptographic-details/
-// [How Amazon Web Services Nitro Enclaves uses KMS]: https://docs.aws.amazon.com/kms/latest/developerguide/services-nitro-enclaves.html
-// [KMS eventual consistency]: https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html
-// [Amazon Web Services Nitro Enclaves SDK]: https://docs.aws.amazon.com/enclaves/latest/user/developing-applications.html#sdk
+// account-specific resources, such as KMS keys. Required permissions:
+// kms:GenerateRandom (https://docs.aws.amazon.com/kms/latest/developerguide/kms-api-permissions-reference.html)
+// (IAM policy) Eventual consistency: The KMS API follows an eventual consistency
+// model. For more information, see KMS eventual consistency (https://docs.aws.amazon.com/kms/latest/developerguide/programming-eventual-consistency.html)
+// .
 func (c *Client) GenerateRandom(ctx context.Context, params *GenerateRandomInput, optFns ...func(*Options)) (*GenerateRandomOutput, error) {
 	if params == nil {
 		params = &GenerateRandomInput{}
@@ -64,36 +55,28 @@ type GenerateRandomInput struct {
 
 	// Generates the random byte string in the CloudHSM cluster that is associated
 	// with the specified CloudHSM key store. To find the ID of a custom key store, use
-	// the DescribeCustomKeyStoresoperation.
-	//
-	// External key store IDs are not valid for this parameter. If you specify the ID
-	// of an external key store, GenerateRandom throws an UnsupportedOperationException
-	// .
+	// the DescribeCustomKeyStores operation. External key store IDs are not valid for
+	// this parameter. If you specify the ID of an external key store, GenerateRandom
+	// throws an UnsupportedOperationException .
 	CustomKeyStoreId *string
 
 	// The length of the random byte string. This parameter is required.
 	NumberOfBytes *int32
 
-	// A signed [attestation document] from an Amazon Web Services Nitro enclave and the encryption
-	// algorithm to use with the enclave's public key. The only valid encryption
-	// algorithm is RSAES_OAEP_SHA_256 .
-	//
-	// This parameter only supports attestation documents for Amazon Web Services
-	// Nitro Enclaves. To include this parameter, use the [Amazon Web Services Nitro Enclaves SDK]or any Amazon Web Services
-	// SDK.
-	//
-	// When you use this parameter, instead of returning plaintext bytes, KMS encrypts
-	// the plaintext bytes under the public key in the attestation document, and
-	// returns the resulting ciphertext in the CiphertextForRecipient field in the
-	// response. This ciphertext can be decrypted only with the private key in the
-	// enclave. The Plaintext field in the response is null or empty.
-	//
-	// For information about the interaction between KMS and Amazon Web Services Nitro
-	// Enclaves, see [How Amazon Web Services Nitro Enclaves uses KMS]in the Key Management Service Developer Guide.
-	//
-	// [attestation document]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/nitro-enclave-how.html#term-attestdoc
-	// [How Amazon Web Services Nitro Enclaves uses KMS]: https://docs.aws.amazon.com/kms/latest/developerguide/services-nitro-enclaves.html
-	// [Amazon Web Services Nitro Enclaves SDK]: https://docs.aws.amazon.com/enclaves/latest/user/developing-applications.html#sdk
+	// A signed attestation document (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/nitro-enclave-how.html#term-attestdoc)
+	// from an Amazon Web Services Nitro enclave and the encryption algorithm to use
+	// with the enclave's public key. The only valid encryption algorithm is
+	// RSAES_OAEP_SHA_256 . This parameter only supports attestation documents for
+	// Amazon Web Services Nitro Enclaves. To include this parameter, use the Amazon
+	// Web Services Nitro Enclaves SDK (https://docs.aws.amazon.com/enclaves/latest/user/developing-applications.html#sdk)
+	// or any Amazon Web Services SDK. When you use this parameter, instead of
+	// returning plaintext bytes, KMS encrypts the plaintext bytes under the public key
+	// in the attestation document, and returns the resulting ciphertext in the
+	// CiphertextForRecipient field in the response. This ciphertext can be decrypted
+	// only with the private key in the enclave. The Plaintext field in the response
+	// is null or empty. For information about the interaction between KMS and Amazon
+	// Web Services Nitro Enclaves, see How Amazon Web Services Nitro Enclaves uses KMS (https://docs.aws.amazon.com/kms/latest/developerguide/services-nitro-enclaves.html)
+	// in the Key Management Service Developer Guide.
 	Recipient *types.RecipientInfo
 
 	noSmithyDocumentSerde
@@ -103,21 +86,18 @@ type GenerateRandomOutput struct {
 
 	// The plaintext random bytes encrypted with the public key from the Nitro
 	// enclave. This ciphertext can be decrypted only by using a private key in the
-	// Nitro enclave.
-	//
-	// This field is included in the response only when the Recipient parameter in the
-	// request includes a valid attestation document from an Amazon Web Services Nitro
-	// enclave. For information about the interaction between KMS and Amazon Web
-	// Services Nitro Enclaves, see [How Amazon Web Services Nitro Enclaves uses KMS]in the Key Management Service Developer Guide.
-	//
-	// [How Amazon Web Services Nitro Enclaves uses KMS]: https://docs.aws.amazon.com/kms/latest/developerguide/services-nitro-enclaves.html
+	// Nitro enclave. This field is included in the response only when the Recipient
+	// parameter in the request includes a valid attestation document from an Amazon
+	// Web Services Nitro enclave. For information about the interaction between KMS
+	// and Amazon Web Services Nitro Enclaves, see How Amazon Web Services Nitro
+	// Enclaves uses KMS (https://docs.aws.amazon.com/kms/latest/developerguide/services-nitro-enclaves.html)
+	// in the Key Management Service Developer Guide.
 	CiphertextForRecipient []byte
 
 	// The random byte string. When you use the HTTP API or the Amazon Web Services
-	// CLI, the value is Base64-encoded. Otherwise, it is not Base64-encoded.
-	//
-	// If the response includes the CiphertextForRecipient field, the Plaintext field
-	// is null or empty.
+	// CLI, the value is Base64-encoded. Otherwise, it is not Base64-encoded. If the
+	// response includes the CiphertextForRecipient field, the Plaintext field is null
+	// or empty.
 	Plaintext []byte
 
 	// Metadata pertaining to the operation's result.
@@ -148,28 +128,25 @@ func (c *Client) addOperationGenerateRandomMiddlewares(stack *middleware.Stack, 
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addClientRequestID(stack); err != nil {
+	if err = awsmiddleware.AddClientRequestIDMiddleware(stack); err != nil {
 		return err
 	}
-	if err = addComputeContentLength(stack); err != nil {
+	if err = smithyhttp.AddComputeContentLengthMiddleware(stack); err != nil {
 		return err
 	}
 	if err = addResolveEndpointMiddleware(stack, options); err != nil {
 		return err
 	}
-	if err = addComputePayloadSHA256(stack); err != nil {
+	if err = v4.AddComputePayloadSHA256Middleware(stack); err != nil {
 		return err
 	}
-	if err = addRetry(stack, options); err != nil {
+	if err = addRetryMiddlewares(stack, options); err != nil {
 		return err
 	}
-	if err = addRawResponseToMetadata(stack); err != nil {
+	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
 		return err
 	}
-	if err = addRecordResponseTiming(stack); err != nil {
-		return err
-	}
-	if err = addSpanRetryLoop(stack, options); err != nil {
+	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
 		return err
 	}
 	if err = addClientUserAgent(stack, options); err != nil {
@@ -184,16 +161,10 @@ func (c *Client) addOperationGenerateRandomMiddlewares(stack *middleware.Stack, 
 	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
-	if err = addTimeOffsetBuild(stack, c); err != nil {
-		return err
-	}
-	if err = addUserAgentRetryMode(stack, options); err != nil {
-		return err
-	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opGenerateRandom(options.Region), middleware.Before); err != nil {
 		return err
 	}
-	if err = addRecursionDetection(stack); err != nil {
+	if err = awsmiddleware.AddRecursionDetection(stack); err != nil {
 		return err
 	}
 	if err = addRequestIDRetrieverMiddleware(stack); err != nil {
@@ -206,18 +177,6 @@ func (c *Client) addOperationGenerateRandomMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
-		return err
-	}
-	if err = addSpanInitializeStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanInitializeEnd(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
 		return err
 	}
 	return nil

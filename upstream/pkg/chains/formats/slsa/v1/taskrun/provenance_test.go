@@ -22,12 +22,11 @@ import (
 	"testing"
 	"time"
 
-	intoto "github.com/in-toto/attestation/go/v1"
 	"github.com/in-toto/in-toto-golang/in_toto/slsa_provenance/common"
 	slsa "github.com/in-toto/in-toto-golang/in_toto/slsa_provenance/v0.2"
-	"google.golang.org/protobuf/testing/protocmp"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/tektoncd/chains/internal/backport"
 	"github.com/tektoncd/chains/pkg/artifacts"
 	"github.com/tektoncd/chains/pkg/chains/formats/slsa/extract"
@@ -295,7 +294,7 @@ func TestGetSubjectDigests(t *testing.T) {
 		},
 	}
 
-	want := []*intoto.ResourceDescriptor{
+	want := []in_toto.Subject{
 		{
 			Name: "com.google.guava:guava:1.0-jre.pom",
 			Digest: common.DigestSet{
@@ -337,7 +336,7 @@ func TestGetSubjectDigests(t *testing.T) {
 	tro := objects.NewTaskRunObjectV1Beta1(tr)
 	got := extract.SubjectDigests(ctx, tro, nil)
 
-	if d := cmp.Diff(want, got, compare.SubjectCompareOption(), protocmp.Transform()); d != "" {
+	if d := cmp.Diff(want, got, compare.SubjectCompareOption()); d != "" {
 		t.Errorf("Wrong subjects extracted, diff=%s", d)
 	}
 }

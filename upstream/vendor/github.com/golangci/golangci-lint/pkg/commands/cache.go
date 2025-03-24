@@ -12,13 +12,7 @@ import (
 	"github.com/golangci/golangci-lint/pkg/logutils"
 )
 
-type cacheCommand struct {
-	cmd *cobra.Command
-}
-
-func newCacheCommand() *cacheCommand {
-	c := &cacheCommand{}
-
+func (e *Executor) initCache() {
 	cacheCmd := &cobra.Command{
 		Use:   "cache",
 		Short: "Cache control and information",
@@ -27,32 +21,28 @@ func newCacheCommand() *cacheCommand {
 			return cmd.Help()
 		},
 	}
+	e.rootCmd.AddCommand(cacheCmd)
 
-	cacheCmd.AddCommand(
-		&cobra.Command{
-			Use:               "clean",
-			Short:             "Clean cache",
-			Args:              cobra.NoArgs,
-			ValidArgsFunction: cobra.NoFileCompletions,
-			RunE:              c.executeClean,
-		},
-		&cobra.Command{
-			Use:               "status",
-			Short:             "Show cache status",
-			Args:              cobra.NoArgs,
-			ValidArgsFunction: cobra.NoFileCompletions,
-			Run:               c.executeStatus,
-		},
-	)
+	cacheCmd.AddCommand(&cobra.Command{
+		Use:               "clean",
+		Short:             "Clean cache",
+		Args:              cobra.NoArgs,
+		ValidArgsFunction: cobra.NoFileCompletions,
+		RunE:              e.executeCleanCache,
+	})
+	cacheCmd.AddCommand(&cobra.Command{
+		Use:               "status",
+		Short:             "Show cache status",
+		Args:              cobra.NoArgs,
+		ValidArgsFunction: cobra.NoFileCompletions,
+		Run:               e.executeCacheStatus,
+	})
 
-	c.cmd = cacheCmd
-
-	return c
+	// TODO: add trim command?
 }
 
-func (*cacheCommand) executeClean(_ *cobra.Command, _ []string) error {
+func (e *Executor) executeCleanCache(_ *cobra.Command, _ []string) error {
 	cacheDir := cache.DefaultDir()
-
 	if err := os.RemoveAll(cacheDir); err != nil {
 		return fmt.Errorf("failed to remove dir %s: %w", cacheDir, err)
 	}
@@ -60,13 +50,13 @@ func (*cacheCommand) executeClean(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-func (*cacheCommand) executeStatus(_ *cobra.Command, _ []string) {
+func (e *Executor) executeCacheStatus(_ *cobra.Command, _ []string) {
 	cacheDir := cache.DefaultDir()
-	_, _ = fmt.Fprintf(logutils.StdOut, "Dir: %s\n", cacheDir)
+	fmt.Fprintf(logutils.StdOut, "Dir: %s\n", cacheDir)
 
 	cacheSizeBytes, err := dirSizeBytes(cacheDir)
 	if err == nil {
-		_, _ = fmt.Fprintf(logutils.StdOut, "Size: %s\n", fsutils.PrettifyBytesCount(cacheSizeBytes))
+		fmt.Fprintf(logutils.StdOut, "Size: %s\n", fsutils.PrettifyBytesCount(cacheSizeBytes))
 	}
 }
 

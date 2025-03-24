@@ -6,12 +6,12 @@ import (
 	"github.com/golangci/golangci-lint/pkg/result"
 )
 
-var _ Processor = (*SourceCode)(nil)
-
 type SourceCode struct {
 	lineCache *fsutils.LineCache
 	log       logutils.Log
 }
+
+var _ Processor = SourceCode{}
 
 func NewSourceCode(lc *fsutils.LineCache, log logutils.Log) *SourceCode {
 	return &SourceCode{
@@ -20,31 +20,28 @@ func NewSourceCode(lc *fsutils.LineCache, log logutils.Log) *SourceCode {
 	}
 }
 
-func (SourceCode) Name() string {
+func (p SourceCode) Name() string {
 	return "source_code"
 }
 
 func (p SourceCode) Process(issues []result.Issue) ([]result.Issue, error) {
-	return transformIssues(issues, p.transform), nil
-}
+	return transformIssues(issues, func(i *result.Issue) *result.Issue {
+		newI := *i
 
-func (SourceCode) Finish() {}
+		lineRange := i.GetLineRange()
+		for lineNumber := lineRange.From; lineNumber <= lineRange.To; lineNumber++ {
+			line, err := p.lineCache.GetLine(i.FilePath(), lineNumber)
+			if err != nil {
+				p.log.Warnf("Failed to get line %d for file %s: %s",
+					lineNumber, i.FilePath(), err)
+				return i
+			}
 
-func (p SourceCode) transform(issue *result.Issue) *result.Issue {
-	newIssue := *issue
-
-	lineRange := issue.GetLineRange()
-	for lineNumber := lineRange.From; lineNumber <= lineRange.To; lineNumber++ {
-		line, err := p.lineCache.GetLine(issue.FilePath(), lineNumber)
-		if err != nil {
-			p.log.Warnf("Failed to get line %d for file %s: %s",
-				lineNumber, issue.FilePath(), err)
-
-			return issue
+			newI.SourceLines = append(newI.SourceLines, line)
 		}
 
-		newIssue.SourceLines = append(newIssue.SourceLines, line)
-	}
-
-	return &newIssue
+		return &newI
+	}), nil
 }
+
+func (p SourceCode) Finish() {}

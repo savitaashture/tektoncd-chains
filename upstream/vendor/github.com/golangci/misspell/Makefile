@@ -9,7 +9,7 @@ build:  ## build misspell
 	go build ./cmd/misspell
 
 test:  ## run all tests
-	CGO_ENABLED=1 go test -v -race .
+	go test -v .
 
 lint:  ## run linter
 	golangci-lint run

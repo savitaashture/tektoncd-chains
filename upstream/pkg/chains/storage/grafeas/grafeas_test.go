@@ -21,23 +21,20 @@ import (
 	"sort"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
-	intoto "github.com/in-toto/attestation/go/v1"
+	intoto "github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/in-toto/in-toto-golang/in_toto/slsa_provenance/common"
 	slsa "github.com/in-toto/in-toto-golang/in_toto/slsa_provenance/v0.2"
 	"github.com/tektoncd/chains/pkg/chains/formats"
+	"github.com/tektoncd/chains/pkg/chains/formats/slsa/extract"
 	"github.com/tektoncd/chains/pkg/chains/objects"
-	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/testing/protocmp"
-	"google.golang.org/protobuf/types/known/structpb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -47,8 +44,6 @@ import (
 	"knative.dev/pkg/logging"
 	logtesting "knative.dev/pkg/logging/testing"
 	rtesting "knative.dev/pkg/reconciler/testing"
-
-	_ "github.com/tektoncd/chains/pkg/chains/formats/all"
 )
 
 const (
@@ -88,12 +83,14 @@ var (
 	}
 
 	// clone taskrun provenance
-	cloneTaskRunPredicate = slsa.ProvenancePredicate{
-		Materials: []common.ProvenanceMaterial{
-			{
-				URI: repoURL,
-				Digest: common.DigestSet{
-					"sha1": commitSHA,
+	cloneTaskRunProvenance = intoto.ProvenanceStatement{
+		Predicate: slsa.ProvenancePredicate{
+			Materials: []common.ProvenanceMaterial{
+				{
+					URI: repoURL,
+					Digest: common.DigestSet{
+						"sha1": commitSHA,
+					},
 				},
 			},
 		},
@@ -122,18 +119,20 @@ var (
 	}
 
 	// artifact built taskrun provenance
-	buildTaskRunProvenance = intoto.Statement{
-		Subject: []*intoto.ResourceDescriptor{
-			{
-				Name: artifactURL1,
-				Digest: common.DigestSet{
-					"sha256": artifactDigest1,
+	buildTaskRunProvenance = intoto.ProvenanceStatement{
+		StatementHeader: intoto.StatementHeader{
+			Subject: []intoto.Subject{
+				{
+					Name: artifactURL1,
+					Digest: common.DigestSet{
+						"sha256": artifactDigest1,
+					},
 				},
-			},
-			{
-				Name: artifactURL2,
-				Digest: common.DigestSet{
-					"sha256": artifactDigest2,
+				{
+					Name: artifactURL2,
+					Digest: common.DigestSet{
+						"sha256": artifactDigest2,
+					},
 				},
 			},
 		},
@@ -162,128 +161,12 @@ var (
 		},
 	}
 
-	// TaskRun with step results.
-	taskRunWithStepResults = &v1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "default",
-			Name:      "taskrun-with-steps",
-			UID:       types.UID("uid-pipeline"),
-			Labels: map[string]string{
-				"tekton.dev/pipelineTask": "taskrun-with-steps",
-			},
-		},
-		Status: v1.TaskRunStatus{
-			TaskRunStatusFields: v1.TaskRunStatusFields{
-				CompletionTime: &metav1.Time{Time: time.Date(1995, time.December, 24, 6, 12, 12, 12, time.UTC)},
-				Results: []v1.TaskRunResult{
-					{
-						Name: "art1-ARTIFACT_OUTPUTS",
-						Value: *v1.NewObject(map[string]string{
-							"uri":             "gcr.io/img1",
-							"digest":          "sha256:52e18b100a8da6e191a1955913ba127b75a8b38146cd9b0f573ec1d8e8ecd135",
-							"isBuildArtifact": "true",
-						}),
-					},
-					{
-						Name: "art2-ARTIFACT_OUTPUTS",
-						Value: *v1.NewObject(map[string]string{
-							"uri":             "gcr.io/img2",
-							"digest":          "sha256:2996854378975c2f8011ddf0526975d1aaf1790b404da7aad4bf25293055bc8b",
-							"isBuildArtifact": "false",
-						}),
-					},
-					{Name: "IMAGE_URL", Value: *v1.NewStructuredValues("gcr.io/img3")},
-					{Name: "IMAGE_DIGEST", Value: *v1.NewStructuredValues("sha256:ef334b5d9704da9b325ed6d4e3e5327863847e2da6d43f81831fd1decbdb2213")},
-				},
-				Steps: []v1.StepState{
-					{
-						Name: "step1",
-						Results: []v1.TaskRunStepResult{
-							{
-								Name: "art3-repeated-ARTIFACT_OUTPUTS",
-								Value: *v1.NewObject(map[string]string{
-									"uri":             "gcr.io/img1",
-									"digest":          "sha256:52e18b100a8da6e191a1955913ba127b75a8b38146cd9b0f573ec1d8e8ecd135",
-									"isBuildArtifact": "true",
-								}),
-							},
-							{
-								Name: "art4-ARTIFACT_OUTPUTS",
-								Value: *v1.NewObject(map[string]string{
-									"uri":             "gcr.io/img4",
-									"digest":          "sha256:910700c5ace59f70588c4e2a38ed131146c9f65c94379dfe12376075fc2f338f",
-									"isBuildArtifact": "true",
-								}),
-							},
-							{
-								Name: "art5-ARTIFACT_OUTPUTS",
-								Value: *v1.NewObject(map[string]string{
-									"uri":    "gcr.io/img5",
-									"digest": "sha256:7492314e32aa75ff1f2cfea35b7dda85d8831929d076aab52420c3400c8c65d8",
-								}),
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	taskRunWithStepResultsProvenancev2alpha4 = intoto.Statement{
-		Subject: []*intoto.ResourceDescriptor{
-			{
-				Name: "gcr.io/img1",
-				Digest: common.DigestSet{
-					"sha256": "52e18b100a8da6e191a1955913ba127b75a8b38146cd9b0f573ec1d8e8ecd135",
-				},
-			},
-			{
-				Name: "gcr.io/img4",
-				Digest: common.DigestSet{
-					"sha256": "910700c5ace59f70588c4e2a38ed131146c9f65c94379dfe12376075fc2f338f",
-				},
-			},
-			{
-				Name: "gcr.io/img3",
-				Digest: common.DigestSet{
-					"sha256": "ef334b5d9704da9b325ed6d4e3e5327863847e2da6d43f81831fd1decbdb2213",
-				},
-			},
-		},
-	}
-
-	pipelineRunWithStepResultsProvenancev2alpha4 = intoto.Statement{
-		Subject: []*intoto.ResourceDescriptor{
-			{
-				Name: "gcr.io/img1",
-				Digest: common.DigestSet{
-					"sha256": "52e18b100a8da6e191a1955913ba127b75a8b38146cd9b0f573ec1d8e8ecd135",
-				},
-			},
-			{
-				Name: "gcr.io/img0",
-				Digest: common.DigestSet{
-					"sha256": "e82e58757ff417de62d35689a6ff58f4a3975c331595ceda979d900d4f5de465",
-				},
-			},
-			{
-				Name: "gcr.io/img4",
-				Digest: common.DigestSet{
-					"sha256": "910700c5ace59f70588c4e2a38ed131146c9f65c94379dfe12376075fc2f338f",
-				},
-			},
-			{
-				Name: "gcr.io/img3",
-				Digest: common.DigestSet{
-					"sha256": "ef334b5d9704da9b325ed6d4e3e5327863847e2da6d43f81831fd1decbdb2213",
-				},
-			},
-		},
-	}
-
 	// ci pipelinerun provenance
-	ciPipelineRunPredicate = slsa.ProvenancePredicate{
-		Materials: cloneTaskRunPredicate.Materials,
+	ciPipelineRunProvenance = intoto.ProvenanceStatement{
+		StatementHeader: buildTaskRunProvenance.StatementHeader,
+		Predicate: slsa.ProvenancePredicate{
+			Materials: cloneTaskRunProvenance.Predicate.Materials,
+		},
 	}
 )
 
@@ -295,11 +178,10 @@ type args struct {
 }
 
 type testConfig struct {
-	name               string
-	args               args
-	withDeepInspection bool
-	wantOccurrences    []*pb.Occurrence
-	wantErr            bool
+	name            string
+	args            args
+	wantOccurrences []*pb.Occurrence
+	wantErr         bool
 }
 
 // This function is to test the implementation of the fake server's ListOccurrences function.
@@ -375,15 +257,6 @@ func TestBackend_ListOccurrences(t *testing.T) {
 // - if the StorePayload function can create correct occurrences and store them into grafeas server
 // - if the RetrievePayloads and RetrieveSignatures functions work properly to fetch correct payloads and signatures
 func TestGrafeasBackend_StoreAndRetrieve(t *testing.T) {
-	cloneTaskRunProvenance := intoto.Statement{
-		Predicate: getPredicateStruct(t, &cloneTaskRunPredicate),
-	}
-
-	ciPipelineRunProvenance := intoto.Statement{
-		Subject:   buildTaskRunProvenance.Subject,
-		Predicate: getPredicateStruct(t, &ciPipelineRunPredicate),
-	}
-
 	tests := []testConfig{
 		{
 			name: "intoto for clone taskrun, no error, no occurrences created because no artifacts were built.",
@@ -391,7 +264,7 @@ func TestGrafeasBackend_StoreAndRetrieve(t *testing.T) {
 				runObject: &objects.TaskRunObjectV1Beta1{
 					TaskRun: cloneTaskRun,
 				},
-				payload:   getRawPayload(t, &cloneTaskRunProvenance),
+				payload:   getRawPayload(t, cloneTaskRunProvenance),
 				signature: "clone taskrun signatures",
 				opts:      config.StorageOpts{PayloadFormat: formats.PayloadTypeSlsav1},
 			},
@@ -404,7 +277,7 @@ func TestGrafeasBackend_StoreAndRetrieve(t *testing.T) {
 				runObject: &objects.TaskRunObjectV1Beta1{
 					TaskRun: buildTaskRun,
 				},
-				payload:   getRawPayload(t, &buildTaskRunProvenance),
+				payload:   getRawPayload(t, buildTaskRunProvenance),
 				signature: "build taskrun signature",
 				opts:      config.StorageOpts{PayloadFormat: formats.PayloadTypeSlsav1},
 			},
@@ -425,12 +298,12 @@ func TestGrafeasBackend_StoreAndRetrieve(t *testing.T) {
 			wantErr:         false,
 		},
 		{
-			name: "intoto for the ci pipeline, no error, 2 occurrences should be created for the pipelinerun for the 2 artifact generated.",
+			name: "intoto for the ci pipeline, no error, 2 occurences should be created for the pipelinerun for the 2 artifact generated.",
 			args: args{
 				runObject: &objects.PipelineRunObjectV1Beta1{
 					PipelineRun: ciPipeline,
 				},
-				payload:   getRawPayload(t, &ciPipelineRunProvenance),
+				payload:   getRawPayload(t, ciPipelineRunProvenance),
 				signature: "ci pipelinerun signature",
 				opts:      config.StorageOpts{PayloadFormat: formats.PayloadTypeSlsav1},
 			},
@@ -450,29 +323,6 @@ func TestGrafeasBackend_StoreAndRetrieve(t *testing.T) {
 			wantOccurrences: nil,
 			wantErr:         true,
 		},
-		{
-			name: "slsav1/v2alpha4 taskrun format, no error",
-			args: args{
-				runObject: &objects.TaskRunObjectV1{
-					TaskRun: taskRunWithStepResults,
-				},
-				payload:   getRawFromProto(t, &taskRunWithStepResultsProvenancev2alpha4),
-				signature: "bar",
-				opts:      config.StorageOpts{PayloadFormat: formats.PayloadTypeSlsav2alpha4},
-			},
-			wantOccurrences: getOccFromProvenance(t, &taskRunWithStepResultsProvenancev2alpha4, "taskrun"),
-		},
-		{
-			name:               "slsav1/v2alpha4 pipelinerun format, no error",
-			withDeepInspection: true,
-			args: args{
-				runObject: getPipelineRunWithSteps(t),
-				payload:   getRawFromProto(t, &pipelineRunWithStepResultsProvenancev2alpha4),
-				signature: "bar",
-				opts:      config.StorageOpts{PayloadFormat: formats.PayloadTypeSlsav2alpha4},
-			},
-			wantOccurrences: getOccFromProvenance(t, &pipelineRunWithStepResultsProvenancev2alpha4, "pipelinerun"),
-		},
 	}
 
 	// setup connection
@@ -483,9 +333,10 @@ func TestGrafeasBackend_StoreAndRetrieve(t *testing.T) {
 	}
 	defer conn.Close()
 
-	// collect all the occurrences expected to be created in the server
+	// collect all the occurences expected to be created in the server
 	allOccurrencesInServer := []*pb.Occurrence{}
 	for _, test := range tests {
+
 		// run the test
 		t.Run(test.name, func(t *testing.T) {
 			ctx := logging.WithLogger(ctx, logtesting.TestLogger(t))
@@ -500,7 +351,7 @@ func TestGrafeasBackend_StoreAndRetrieve(t *testing.T) {
 					},
 					Artifacts: config.ArtifactConfigs{
 						PipelineRuns: config.Artifact{
-							DeepInspectionEnabled: test.withDeepInspection,
+							DeepInspectionEnabled: false,
 						},
 					},
 				},
@@ -534,115 +385,8 @@ func TestGrafeasBackend_StoreAndRetrieve(t *testing.T) {
 	}
 }
 
-func getPipelineRunWithSteps(t *testing.T) *objects.PipelineRunObjectV1 {
-	t.Helper()
-	pr := &v1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "default",
-			Name:      "pipeline-with-steps",
-			UID:       types.UID("uid-pipeline"),
-		},
-		Status: v1.PipelineRunStatus{
-			PipelineRunStatusFields: v1.PipelineRunStatusFields{
-				Results: []v1.PipelineRunResult{
-					{
-						Name: "art1-ARTIFACT_OUTPUTS",
-						Value: *v1.NewObject(map[string]string{
-							"uri":             "gcr.io/img1",
-							"digest":          "sha256:52e18b100a8da6e191a1955913ba127b75a8b38146cd9b0f573ec1d8e8ecd135",
-							"isBuildArtifact": "true",
-						}),
-					},
-					{
-						Name: "art0-ARTIFACT_OUTPUTS",
-						Value: *v1.NewObject(map[string]string{
-							"uri":             "gcr.io/img0",
-							"digest":          "sha256:e82e58757ff417de62d35689a6ff58f4a3975c331595ceda979d900d4f5de465",
-							"isBuildArtifact": "true",
-						}),
-					},
-					{
-						Name: "art0-ARTIFACT_OUTPUTS",
-						Value: *v1.NewObject(map[string]string{
-							"uri":             "gcr.io/img7",
-							"digest":          "sha256:dc9c5a6b73b21dbc5c49254907fafead52ce59604e073c200c2c38002a9102e7",
-							"isBuildArtifact": "false",
-						}),
-					},
-				},
-				PipelineSpec: &v1.PipelineSpec{
-					Tasks: []v1.PipelineTask{
-						{
-							Name: "taskrun-with-steps",
-						},
-					},
-				},
-			},
-		},
-	}
-
-	prObj := &objects.PipelineRunObjectV1{
-		PipelineRun: pr,
-	}
-
-	prObj.AppendTaskRun(taskRunWithStepResults)
-
-	return prObj
-}
-
-func getOccFromProvenance(t *testing.T, provenance *intoto.Statement, noteType string) []*pb.Occurrence {
-	t.Helper()
-	var intotoSubjects []*pb.Subject
-	var occurs []*pb.Occurrence
-	subjects := provenance.Subject
-	noteName := fmt.Sprintf("projects/%s/notes/%s-%s-intoto", ProjectID, NoteID, noteType)
-
-	for _, subject := range subjects {
-		intotoSubjects = append(intotoSubjects, &pb.Subject{
-			Name:   subject.Name,
-			Digest: subject.Digest,
-		})
-	}
-
-	for _, subject := range subjects {
-		identifier := fmt.Sprintf("%v@sha256:%v", subject.Name, subject.Digest["sha256"])
-		occ := &pb.Occurrence{
-			Name:        identifier,
-			ResourceUri: identifier,
-			NoteName:    noteName,
-			Details: &pb.Occurrence_Build{
-				Build: &pb.BuildOccurrence{
-					IntotoStatement: &pb.InTotoStatement{
-						Subject: intotoSubjects,
-						Predicate: &pb.InTotoStatement_SlsaProvenanceZeroTwo{
-							SlsaProvenanceZeroTwo: &pb.SlsaProvenanceZeroTwo{
-								Builder: &pb.SlsaProvenanceZeroTwo_SlsaBuilder{},
-								Invocation: &pb.SlsaProvenanceZeroTwo_SlsaInvocation{
-									ConfigSource: &pb.SlsaProvenanceZeroTwo_SlsaConfigSource{},
-								},
-							},
-						},
-					},
-				},
-			},
-			Envelope: &pb.Envelope{
-				Payload:     getRawFromProto(t, provenance),
-				PayloadType: "application/vnd.in-toto+json",
-				Signatures: []*pb.EnvelopeSignature{
-					{Sig: []byte("bar")},
-				},
-			},
-		}
-
-		occurs = append(occurs, occ)
-	}
-
-	return occurs
-}
-
 // test attestation storage and retrieval
 func testStoreAndRetrieveHelper(ctx context.Context, t *testing.T, test testConfig, backend Backend) {
-	t.Helper()
 	if err := backend.StorePayload(ctx, test.args.runObject, test.args.payload, test.args.signature, test.args.opts); (err != nil) != test.wantErr {
 		t.Fatalf("Backend.StorePayload() failed. error:%v, wantErr:%v", err, test.wantErr)
 	}
@@ -659,7 +403,7 @@ func testStoreAndRetrieveHelper(ctx context.Context, t *testing.T, test testConf
 		expectSignature[test.args.opts.FullKey] = []string{test.args.signature}
 	}
 	if _, ok := formats.IntotoAttestationSet[test.args.opts.PayloadFormat]; ok {
-		allURIs := retrieveAllArtifactURIs(ctx, t, test, backend)
+		allURIs := extract.RetrieveAllArtifactURIs(ctx, test.args.runObject, false)
 		for _, u := range allURIs {
 			expectSignature[u] = []string{test.args.signature}
 		}
@@ -681,7 +425,7 @@ func testStoreAndRetrieveHelper(ctx context.Context, t *testing.T, test testConf
 		expectPayload[test.args.opts.FullKey] = string(test.args.payload)
 	}
 	if _, ok := formats.IntotoAttestationSet[test.args.opts.PayloadFormat]; ok {
-		allURIs := retrieveAllArtifactURIs(ctx, t, test, backend)
+		allURIs := extract.RetrieveAllArtifactURIs(ctx, test.args.runObject, false)
 		for _, u := range allURIs {
 			expectPayload[u] = string(test.args.payload)
 		}
@@ -697,24 +441,9 @@ func testStoreAndRetrieveHelper(ctx context.Context, t *testing.T, test testConf
 	}
 }
 
-func retrieveAllArtifactURIs(ctx context.Context, t *testing.T, test testConfig, backend Backend) []string {
-	t.Helper()
-	payloader, err := formats.GetPayloader(test.args.opts.PayloadFormat, backend.cfg)
-	if err != nil {
-		t.Fatalf("error getting payloader: %v", err)
-	}
-	allURIs, err := payloader.RetrieveAllArtifactURIs(ctx, test.args.runObject)
-	if err != nil {
-		t.Fatalf("error getting artifacts URIs: %v", err)
-	}
-
-	return allURIs
-}
-
 // ------------------ occurrences for taskruns and pipelineruns --------------
 // BUILD Occurrence for the build taskrun that stores the slsa provenance
 func getTaskRunBuildOcc(t *testing.T, identifier string) *pb.Occurrence {
-	t.Helper()
 	return &pb.Occurrence{
 		Name:        identifier,
 		ResourceUri: identifier,
@@ -743,7 +472,7 @@ func getTaskRunBuildOcc(t *testing.T, identifier string) *pb.Occurrence {
 			},
 		},
 		Envelope: &pb.Envelope{
-			Payload:     getRawPayload(t, &buildTaskRunProvenance),
+			Payload:     getRawPayload(t, buildTaskRunProvenance),
 			PayloadType: "application/vnd.in-toto+json",
 			Signatures: []*pb.EnvelopeSignature{
 				{Sig: []byte("build taskrun signature")},
@@ -754,7 +483,6 @@ func getTaskRunBuildOcc(t *testing.T, identifier string) *pb.Occurrence {
 
 // ATTESTATION Occurrence for the build taskrun that stores the image attestation
 func getTaskRunAttestationOcc(t *testing.T, identifier string) *pb.Occurrence {
-	t.Helper()
 	return &pb.Occurrence{
 		Name:        identifier,
 		ResourceUri: identifier,
@@ -778,12 +506,6 @@ func getTaskRunAttestationOcc(t *testing.T, identifier string) *pb.Occurrence {
 }
 
 func getPipelineRunBuildOcc(t *testing.T, identifier string) *pb.Occurrence {
-	t.Helper()
-	ciPipelineRunProvenance := intoto.Statement{
-		Subject:   buildTaskRunProvenance.Subject,
-		Predicate: getPredicateStruct(t, &ciPipelineRunPredicate),
-	}
-
 	return &pb.Occurrence{
 		Name:        identifier,
 		ResourceUri: identifier,
@@ -818,7 +540,7 @@ func getPipelineRunBuildOcc(t *testing.T, identifier string) *pb.Occurrence {
 			},
 		},
 		Envelope: &pb.Envelope{
-			Payload:     getRawPayload(t, &ciPipelineRunProvenance),
+			Payload:     getRawPayload(t, ciPipelineRunProvenance),
 			PayloadType: "application/vnd.in-toto+json",
 			Signatures: []*pb.EnvelopeSignature{
 				{Sig: []byte("ci pipelinerun signature")},
@@ -828,7 +550,6 @@ func getPipelineRunBuildOcc(t *testing.T, identifier string) *pb.Occurrence {
 }
 
 func getRawPayload(t *testing.T, in interface{}) []byte {
-	t.Helper()
 	rawPayload, err := json.Marshal(in)
 	if err != nil {
 		t.Errorf("Unable to marshal the provenance: %v", in)
@@ -836,18 +557,9 @@ func getRawPayload(t *testing.T, in interface{}) []byte {
 	return rawPayload
 }
 
-func getRawFromProto(t *testing.T, in *intoto.Statement) []byte {
-	t.Helper()
-	raw, err := protojson.Marshal(in)
-	if err != nil {
-		t.Errorf("Unable to marshal the proto provenance: %v", in)
-	}
-	return raw
-}
-
 // set up the connection between grafeas server and client
 // and return the client object to the caller
-func setupConnection() (*grpc.ClientConn, pb.GrafeasClient, error) { //nolint:ireturn
+func setupConnection() (*grpc.ClientConn, pb.GrafeasClient, error) {
 	serv := grpc.NewServer()
 	pb.RegisterGrafeasServer(serv, &mockGrafeasServer{})
 
@@ -901,7 +613,7 @@ func (s *mockGrafeasServer) CreateOccurrence(ctx context.Context, req *pb.Create
 	occ := req.GetOccurrence()
 	noteName := req.GetOccurrence().NoteName
 	resourceUri := req.GetOccurrence().ResourceUri
-	occ.Name = resourceUri // mock how the occurrence ID (name) is outputted.
+	occ.Name = resourceUri // mock how the occurrence ID (name) is outputed.
 
 	if note, ok := s.entries[noteName]; ok {
 		if _, ok := note.occurrences[resourceUri]; ok {
@@ -988,6 +700,7 @@ func (s *mockGrafeasServer) getOccurrencesByFilter(filter string, occurrences []
 	// mock how uri filter works
 	uris := parseURIFilterString(filter)
 
+	// result result
 	result := []*pb.Occurrence{}
 
 	for _, occ := range occurrences {
@@ -1021,20 +734,4 @@ func parseURIFilterString(filter string) []string {
 	}
 
 	return results
-}
-
-func getPredicateStruct(t *testing.T, predicate *slsa.ProvenancePredicate) *structpb.Struct {
-	t.Helper()
-	predicateJSON, err := json.Marshal(predicate)
-	if err != nil {
-		t.Fatalf("error getting predicate struct: %v", err)
-	}
-
-	predicateStruct := &structpb.Struct{}
-	err = protojson.Unmarshal(predicateJSON, predicateStruct)
-	if err != nil {
-		t.Fatalf("error getting predicate struct: %v", err)
-	}
-
-	return predicateStruct
 }

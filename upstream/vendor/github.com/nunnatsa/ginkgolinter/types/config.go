@@ -1,8 +1,9 @@
 package types
 
 import (
-	"go/ast"
 	"strings"
+
+	"go/ast"
 )
 
 const (
@@ -17,17 +18,14 @@ const (
 )
 
 type Config struct {
-	SuppressLen            Boolean
-	SuppressNil            Boolean
-	SuppressErr            Boolean
-	SuppressCompare        Boolean
-	SuppressAsync          Boolean
-	ForbidFocus            Boolean
-	SuppressTypeCompare    Boolean
-	AllowHaveLen0          Boolean
-	ForceExpectTo          Boolean
-	ValidateAsyncIntervals Boolean
-	ForbidSpecPollution    Boolean
+	SuppressLen         Boolean
+	SuppressNil         Boolean
+	SuppressErr         Boolean
+	SuppressCompare     Boolean
+	SuppressAsync       Boolean
+	ForbidFocus         Boolean
+	SuppressTypeCompare Boolean
+	AllowHaveLen0       Boolean
 }
 
 func (s *Config) AllTrue() bool {
@@ -36,17 +34,14 @@ func (s *Config) AllTrue() bool {
 
 func (s *Config) Clone() Config {
 	return Config{
-		SuppressLen:            s.SuppressLen,
-		SuppressNil:            s.SuppressNil,
-		SuppressErr:            s.SuppressErr,
-		SuppressCompare:        s.SuppressCompare,
-		SuppressAsync:          s.SuppressAsync,
-		ForbidFocus:            s.ForbidFocus,
-		SuppressTypeCompare:    s.SuppressTypeCompare,
-		AllowHaveLen0:          s.AllowHaveLen0,
-		ForceExpectTo:          s.ForceExpectTo,
-		ValidateAsyncIntervals: s.ValidateAsyncIntervals,
-		ForbidSpecPollution:    s.ForbidSpecPollution,
+		SuppressLen:         s.SuppressLen,
+		SuppressNil:         s.SuppressNil,
+		SuppressErr:         s.SuppressErr,
+		SuppressCompare:     s.SuppressCompare,
+		SuppressAsync:       s.SuppressAsync,
+		ForbidFocus:         s.ForbidFocus,
+		SuppressTypeCompare: s.SuppressTypeCompare,
+		AllowHaveLen0:       s.AllowHaveLen0,
 	}
 }
 

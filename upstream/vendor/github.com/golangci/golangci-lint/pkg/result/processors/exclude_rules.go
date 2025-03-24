@@ -3,103 +3,93 @@ package processors
 import (
 	"regexp"
 
-	"github.com/golangci/golangci-lint/pkg/config"
 	"github.com/golangci/golangci-lint/pkg/fsutils"
 	"github.com/golangci/golangci-lint/pkg/logutils"
 	"github.com/golangci/golangci-lint/pkg/result"
 )
 
-var _ Processor = (*ExcludeRules)(nil)
-
 type excludeRule struct {
 	baseRule
 }
 
-type ExcludeRules struct {
-	name string
-
-	log   logutils.Log
-	files *fsutils.Files
-
-	rules []excludeRule
+type ExcludeRule struct {
+	BaseRule
 }
 
-func NewExcludeRules(log logutils.Log, files *fsutils.Files, cfg *config.Issues) *ExcludeRules {
-	p := &ExcludeRules{
-		name:  "exclude-rules",
+type ExcludeRules struct {
+	rules []excludeRule
+	files *fsutils.Files
+	log   logutils.Log
+}
+
+func NewExcludeRules(rules []ExcludeRule, files *fsutils.Files, log logutils.Log) *ExcludeRules {
+	r := &ExcludeRules{
 		files: files,
 		log:   log,
 	}
+	r.rules = createRules(rules, "(?i)")
 
-	prefix := caseInsensitivePrefix
-	if cfg.ExcludeCaseSensitive {
-		prefix = ""
-		p.name = "exclude-rules-case-sensitive"
-	}
-
-	excludeRules := cfg.ExcludeRules
-
-	if cfg.UseDefaultExcludes {
-		for _, r := range config.GetExcludePatterns(cfg.IncludeDefaultExcludes) {
-			excludeRules = append(excludeRules, config.ExcludeRule{
-				BaseRule: config.BaseRule{
-					Text:    r.Pattern,
-					Linters: []string{r.Linter},
-				},
-			})
-		}
-	}
-
-	p.rules = createRules(excludeRules, prefix)
-
-	return p
+	return r
 }
 
-func (p ExcludeRules) Name() string { return p.name }
+func createRules(rules []ExcludeRule, prefix string) []excludeRule {
+	parsedRules := make([]excludeRule, 0, len(rules))
+	for _, rule := range rules {
+		parsedRule := excludeRule{}
+		parsedRule.linters = rule.Linters
+		if rule.Text != "" {
+			parsedRule.text = regexp.MustCompile(prefix + rule.Text)
+		}
+		if rule.Source != "" {
+			parsedRule.source = regexp.MustCompile(prefix + rule.Source)
+		}
+		if rule.Path != "" {
+			path := fsutils.NormalizePathInRegex(rule.Path)
+			parsedRule.path = regexp.MustCompile(path)
+		}
+		if rule.PathExcept != "" {
+			pathExcept := fsutils.NormalizePathInRegex(rule.PathExcept)
+			parsedRule.pathExcept = regexp.MustCompile(pathExcept)
+		}
+		parsedRules = append(parsedRules, parsedRule)
+	}
+	return parsedRules
+}
 
 func (p ExcludeRules) Process(issues []result.Issue) ([]result.Issue, error) {
 	if len(p.rules) == 0 {
 		return issues, nil
 	}
-
-	return filterIssues(issues, func(issue *result.Issue) bool {
+	return filterIssues(issues, func(i *result.Issue) bool {
 		for _, rule := range p.rules {
-			if rule.match(issue, p.files, p.log) {
+			rule := rule
+			if rule.match(i, p.files, p.log) {
 				return false
 			}
 		}
-
 		return true
 	}), nil
 }
 
-func (ExcludeRules) Finish() {}
+func (ExcludeRules) Name() string { return "exclude-rules" }
+func (ExcludeRules) Finish()      {}
 
-func createRules(rules []config.ExcludeRule, prefix string) []excludeRule {
-	parsedRules := make([]excludeRule, 0, len(rules))
+var _ Processor = ExcludeRules{}
 
-	for _, rule := range rules {
-		parsedRule := excludeRule{}
-		parsedRule.linters = rule.Linters
-
-		if rule.Text != "" {
-			parsedRule.text = regexp.MustCompile(prefix + rule.Text)
-		}
-
-		if rule.Source != "" {
-			parsedRule.source = regexp.MustCompile(prefix + rule.Source)
-		}
-
-		if rule.Path != "" {
-			parsedRule.path = regexp.MustCompile(fsutils.NormalizePathInRegex(rule.Path))
-		}
-
-		if rule.PathExcept != "" {
-			parsedRule.pathExcept = regexp.MustCompile(fsutils.NormalizePathInRegex(rule.PathExcept))
-		}
-
-		parsedRules = append(parsedRules, parsedRule)
-	}
-
-	return parsedRules
+type ExcludeRulesCaseSensitive struct {
+	*ExcludeRules
 }
+
+func NewExcludeRulesCaseSensitive(rules []ExcludeRule, files *fsutils.Files, log logutils.Log) *ExcludeRulesCaseSensitive {
+	r := &ExcludeRules{
+		files: files,
+		log:   log,
+	}
+	r.rules = createRules(rules, "")
+
+	return &ExcludeRulesCaseSensitive{r}
+}
+
+func (ExcludeRulesCaseSensitive) Name() string { return "exclude-rules-case-sensitive" }
+
+var _ Processor = ExcludeCaseSensitive{}

@@ -1,13 +1,8 @@
 package lint
 
-import (
-	goversion "github.com/hashicorp/go-version"
-)
-
 // Arguments is type used for the arguments of a rule.
 type Arguments = []interface{}
 
-// FileFilters is type used for modeling file filters to apply to rules.
 type FileFilters = []*FileFilter
 
 // RuleConfig is type used for the rule configuration.
@@ -37,8 +32,8 @@ func (rc *RuleConfig) Initialize() error {
 type RulesConfig = map[string]RuleConfig
 
 // MustExclude - checks if given filename `name` must be excluded
-func (rc *RuleConfig) MustExclude(name string) bool {
-	for _, exclude := range rc.excludeFilters {
+func (rcfg *RuleConfig) MustExclude(name string) bool {
+	for _, exclude := range rcfg.excludeFilters {
 		if exclude.MatchFileName(name) {
 			return true
 		}
@@ -65,7 +60,4 @@ type Config struct {
 	WarningCode           int              `toml:"warningCode"`
 	Directives            DirectivesConfig `toml:"directive"`
 	Exclude               []string         `toml:"exclude"`
-	// If set, overrides the go language version specified in go.mod of
-	// packages being linted, and assumes this specific language version.
-	GoVersion *goversion.Version
 }

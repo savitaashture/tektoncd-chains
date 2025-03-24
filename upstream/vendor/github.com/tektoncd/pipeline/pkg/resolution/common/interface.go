@@ -30,12 +30,10 @@ type ResolverName string
 
 // Requester is the interface implemented by a type that knows how to
 // submit requests for remote resources.
-//
-// Deprecated: Use [github.com/tektoncd/pipeline/pkg/remoteresolution/resource.Requester].
 type Requester interface {
 	// Submit accepts the name of a resolver to submit a request to
 	// along with the request itself.
-	Submit(ctx context.Context, name ResolverName, req Request) (ResolvedResource, error)
+	Submit(context.Context, ResolverName, Request) (ResolvedResource, error)
 }
 
 // Request is implemented by any type that represents a single request
@@ -43,8 +41,6 @@ type Requester interface {
 // type an opportunity to control properties such as whether the name of
 // a request has particular properties, whether the request should be made
 // to a specific namespace, and precisely which parameters should be included.
-//
-// Deprecated: Use [github.com/tektoncd/pipeline/pkg/remoteresolution/resource.Request].
 type Request interface {
 	Name() string
 	Namespace() string

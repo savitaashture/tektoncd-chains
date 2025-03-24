@@ -18,13 +18,13 @@ const (
 	kindSTRING         = "STRING"
 )
 
-type allowList map[string]map[string]bool
+type whiteList map[string]map[string]bool
 
-func newAllowList() allowList {
+func newWhiteList() whiteList {
 	return map[string]map[string]bool{kindINT: {}, kindFLOAT: {}, kindSTRING: {}}
 }
 
-func (wl allowList) add(kind, list string) {
+func (wl whiteList) add(kind, list string) {
 	elems := strings.Split(list, ",")
 	for _, e := range elems {
 		wl[kind][e] = true
@@ -33,7 +33,7 @@ func (wl allowList) add(kind, list string) {
 
 // AddConstantRule lints unused params in functions.
 type AddConstantRule struct {
-	allowList       allowList
+	whiteList       whiteList
 	ignoreFunctions []*regexp.Regexp
 	strLitLimit     int
 	sync.Mutex
@@ -49,13 +49,12 @@ func (r *AddConstantRule) Apply(file *lint.File, arguments lint.Arguments) []lin
 		failures = append(failures, failure)
 	}
 
-	w := &lintAddConstantRule{
+	w := lintAddConstantRule{
 		onFailure:       onFailure,
 		strLits:         make(map[string]int),
 		strLitLimit:     r.strLitLimit,
-		allowList:       r.allowList,
+		whiteLst:        r.whiteList,
 		ignoreFunctions: r.ignoreFunctions,
-		structTags:      make(map[*ast.BasicLit]struct{}),
 	}
 
 	ast.Walk(w, file.AST)
@@ -72,16 +71,11 @@ type lintAddConstantRule struct {
 	onFailure       func(lint.Failure)
 	strLits         map[string]int
 	strLitLimit     int
-	allowList       allowList
+	whiteLst        whiteList
 	ignoreFunctions []*regexp.Regexp
-	structTags      map[*ast.BasicLit]struct{}
 }
 
-func (w *lintAddConstantRule) Visit(node ast.Node) ast.Visitor {
-	if node == nil {
-		return nil
-	}
-
+func (w lintAddConstantRule) Visit(node ast.Node) ast.Visitor {
 	switch n := node.(type) {
 	case *ast.CallExpr:
 		w.checkFunc(n)
@@ -89,23 +83,13 @@ func (w *lintAddConstantRule) Visit(node ast.Node) ast.Visitor {
 	case *ast.GenDecl:
 		return nil // skip declarations
 	case *ast.BasicLit:
-		if !w.isStructTag(n) {
-			w.checkLit(n)
-		}
-	case *ast.StructType:
-		if n.Fields != nil {
-			for _, field := range n.Fields.List {
-				if field.Tag != nil {
-					w.structTags[field.Tag] = struct{}{}
-				}
-			}
-		}
+		w.checkLit(n)
 	}
 
 	return w
 }
 
-func (w *lintAddConstantRule) checkFunc(expr *ast.CallExpr) {
+func (w lintAddConstantRule) checkFunc(expr *ast.CallExpr) {
 	fName := w.getFuncName(expr)
 
 	for _, arg := range expr.Args {
@@ -121,17 +105,12 @@ func (w *lintAddConstantRule) checkFunc(expr *ast.CallExpr) {
 	}
 }
 
-func (*lintAddConstantRule) getFuncName(expr *ast.CallExpr) string {
+func (w lintAddConstantRule) getFuncName(expr *ast.CallExpr) string {
 	switch f := expr.Fun.(type) {
 	case *ast.SelectorExpr:
 		switch prefix := f.X.(type) {
 		case *ast.Ident:
 			return prefix.Name + "." + f.Sel.Name
-		case *ast.CallExpr:
-			// If the selector is an CallExpr, like `fn().Info`, we return `.Info` as function name
-			if f.Sel != nil {
-				return "." + f.Sel.Name
-			}
 		}
 	case *ast.Ident:
 		return f.Name
@@ -140,7 +119,7 @@ func (*lintAddConstantRule) getFuncName(expr *ast.CallExpr) string {
 	return ""
 }
 
-func (w *lintAddConstantRule) checkLit(n *ast.BasicLit) {
+func (w lintAddConstantRule) checkLit(n *ast.BasicLit) {
 	switch kind := n.Kind.String(); kind {
 	case kindFLOAT, kindINT:
 		w.checkNumLit(kind, n)
@@ -149,7 +128,7 @@ func (w *lintAddConstantRule) checkLit(n *ast.BasicLit) {
 	}
 }
 
-func (w *lintAddConstantRule) isIgnoredFunc(fName string) bool {
+func (w lintAddConstantRule) isIgnoredFunc(fName string) bool {
 	for _, pattern := range w.ignoreFunctions {
 		if pattern.MatchString(fName) {
 			return true
@@ -159,8 +138,8 @@ func (w *lintAddConstantRule) isIgnoredFunc(fName string) bool {
 	return false
 }
 
-func (w *lintAddConstantRule) checkStrLit(n *ast.BasicLit) {
-	if w.allowList[kindSTRING][n.Value] {
+func (w lintAddConstantRule) checkStrLit(n *ast.BasicLit) {
+	if w.whiteLst[kindSTRING][n.Value] {
 		return
 	}
 
@@ -179,8 +158,8 @@ func (w *lintAddConstantRule) checkStrLit(n *ast.BasicLit) {
 	}
 }
 
-func (w *lintAddConstantRule) checkNumLit(kind string, n *ast.BasicLit) {
-	if w.allowList[kind][n.Value] {
+func (w lintAddConstantRule) checkNumLit(kind string, n *ast.BasicLit) {
+	if w.whiteLst[kind][n.Value] {
 		return
 	}
 
@@ -192,20 +171,15 @@ func (w *lintAddConstantRule) checkNumLit(kind string, n *ast.BasicLit) {
 	})
 }
 
-func (w *lintAddConstantRule) isStructTag(n *ast.BasicLit) bool {
-	_, ok := w.structTags[n]
-	return ok
-}
-
 func (r *AddConstantRule) configure(arguments lint.Arguments) {
 	r.Lock()
 	defer r.Unlock()
 
-	if r.allowList == nil {
+	if r.whiteList == nil {
 		r.strLitLimit = defaultStrLitLimit
-		r.allowList = newAllowList()
+		r.whiteList = newWhiteList()
 		if len(arguments) > 0 {
-			args, ok := arguments[0].(map[string]any)
+			args, ok := arguments[0].(map[string]interface{})
 			if !ok {
 				panic(fmt.Sprintf("Invalid argument to the add-constant rule. Expecting a k,v map, got %T", arguments[0]))
 			}
@@ -228,7 +202,7 @@ func (r *AddConstantRule) configure(arguments lint.Arguments) {
 					if !ok {
 						panic(fmt.Sprintf("Invalid argument to the add-constant rule, string expected. Got '%v' (%T)", v, v))
 					}
-					r.allowList.add(kind, list)
+					r.whiteList.add(kind, list)
 				case "maxLitCount":
 					sl, ok := v.(string)
 					if !ok {

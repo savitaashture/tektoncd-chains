@@ -358,17 +358,16 @@ func TestNewTektonObject(t *testing.T) {
 	assert.ErrorContains(t, err, "unrecognized type")
 }
 
-func TestPipelineRun_GetTaskRunsFromTask(t *testing.T) {
+func TestPipelineRun_GetTaskRunFromTask(t *testing.T) {
 	pro := NewPipelineRunObjectV1(getPipelineRun())
 
-	assert.Nil(t, pro.GetTaskRunsFromTask("missing"))
-	assert.Nil(t, pro.GetTaskRunsFromTask("foo-task"))
+	assert.Nil(t, pro.GetTaskRunFromTask("missing"))
+	assert.Nil(t, pro.GetTaskRunFromTask("foo-task"))
 
 	pro.AppendTaskRun(getTaskRun())
-	assert.Nil(t, pro.GetTaskRunsFromTask("missing"))
-	taskRuns := pro.GetTaskRunsFromTask("foo-task")
-	assert.NotEmpty(t, taskRuns)
-	assert.Equal(t, "foo", taskRuns[0].Name)
+	assert.Nil(t, pro.GetTaskRunFromTask("missing"))
+	tr := pro.GetTaskRunFromTask("foo-task")
+	assert.Equal(t, "foo", tr.Name)
 }
 
 func TestProvenanceExists(t *testing.T) {

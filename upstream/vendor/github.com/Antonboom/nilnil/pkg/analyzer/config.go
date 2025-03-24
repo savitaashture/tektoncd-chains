@@ -8,13 +8,11 @@ import (
 
 func newDefaultCheckedTypes() checkedTypes {
 	return checkedTypes{
-		ptrType:       {},
-		funcType:      {},
-		ifaceType:     {},
-		mapType:       {},
-		chanType:      {},
-		uintptrType:   {},
-		unsafeptrType: {},
+		ptrType:   struct{}{},
+		funcType:  struct{}{},
+		ifaceType: struct{}{},
+		mapType:   struct{}{},
+		chanType:  struct{}{},
 	}
 }
 
@@ -27,14 +25,14 @@ func (t typeName) S() string {
 }
 
 const (
-	ptrType       typeName = "ptr"
-	funcType      typeName = "func"
-	ifaceType     typeName = "iface"
-	mapType       typeName = "map"
-	chanType      typeName = "chan"
-	uintptrType   typeName = "uintptr"
-	unsafeptrType typeName = "unsafeptr"
+	ptrType   typeName = "ptr"
+	funcType  typeName = "func"
+	ifaceType typeName = "iface"
+	mapType   typeName = "map"
+	chanType  typeName = "chan"
 )
+
+var knownTypes = []typeName{ptrType, funcType, ifaceType, mapType, chanType}
 
 type checkedTypes map[typeName]struct{}
 
@@ -62,7 +60,7 @@ func (c checkedTypes) Set(s string) error {
 	c.disableAll()
 	for _, t := range types {
 		switch tt := typeName(t); tt {
-		case ptrType, funcType, ifaceType, mapType, chanType, uintptrType, unsafeptrType:
+		case ptrType, funcType, ifaceType, mapType, chanType:
 			c[tt] = struct{}{}
 		default:
 			return fmt.Errorf("unknown checked type name %q (see help)", t)

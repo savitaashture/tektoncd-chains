@@ -16,7 +16,7 @@ import (
 	"github.com/golangci/golangci-lint/pkg/timeutils"
 )
 
-var _ Processor = (*Fixer)(nil)
+var _ Processor = Fixer{}
 
 type Fixer struct {
 	cfg       *config.Config
@@ -34,12 +34,12 @@ func NewFixer(cfg *config.Config, log logutils.Log, fileCache *fsutils.FileCache
 	}
 }
 
-func (Fixer) Name() string {
-	return "fixer"
+func (f Fixer) printStat() {
+	f.sw.PrintStages()
 }
 
-func (p Fixer) Process(issues []result.Issue) ([]result.Issue, error) {
-	if !p.cfg.Issues.NeedFix {
+func (f Fixer) Process(issues []result.Issue) ([]result.Issue, error) {
+	if !f.cfg.Issues.NeedFix {
 		return issues, nil
 	}
 
@@ -57,36 +57,37 @@ func (p Fixer) Process(issues []result.Issue) ([]result.Issue, error) {
 
 	for file, issuesToFix := range issuesToFixPerFile {
 		var err error
-		p.sw.TrackStage("all", func() {
-			err = p.fixIssuesInFile(file, issuesToFix)
+		f.sw.TrackStage("all", func() {
+			err = f.fixIssuesInFile(file, issuesToFix)
 		})
 		if err != nil {
-			p.log.Errorf("Failed to fix issues in file %s: %s", file, err)
+			f.log.Errorf("Failed to fix issues in file %s: %s", file, err)
 
 			// show issues only if can't fix them
 			outIssues = append(outIssues, issuesToFix...)
 		}
 	}
 
-	p.printStat()
-
+	f.printStat()
 	return outIssues, nil
 }
 
-func (Fixer) Finish() {}
+func (f Fixer) Name() string {
+	return "fixer"
+}
 
-func (p Fixer) fixIssuesInFile(filePath string, issues []result.Issue) error {
+func (f Fixer) Finish() {}
+
+func (f Fixer) fixIssuesInFile(filePath string, issues []result.Issue) error {
 	// TODO: don't read the whole file into memory: read line by line;
 	// can't just use bufio.scanner: it has a line length limit
-	origFileData, err := p.fileCache.GetFileBytes(filePath)
+	origFileData, err := f.fileCache.GetFileBytes(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to get file bytes for %s: %w", filePath, err)
 	}
-
 	origFileLines := bytes.Split(origFileData, []byte("\n"))
 
 	tmpFileName := filepath.Join(filepath.Dir(filePath), fmt.Sprintf(".%s.golangci_fix", filepath.Base(filePath)))
-
 	tmpOutFile, err := os.Create(tmpFileName)
 	if err != nil {
 		return fmt.Errorf("failed to make file %s: %w", tmpFileName, err)
@@ -101,21 +102,20 @@ func (p Fixer) fixIssuesInFile(filePath string, issues []result.Issue) error {
 
 	issues = issues[:0] // reuse the same memory
 	for line, lineIssues := range issuesPerLine {
-		if mergedIssue := p.mergeLineIssues(line, lineIssues, origFileLines); mergedIssue != nil {
+		if mergedIssue := f.mergeLineIssues(line, lineIssues, origFileLines); mergedIssue != nil {
 			issues = append(issues, *mergedIssue)
 		}
 	}
 
-	issues = p.findNotIntersectingIssues(issues)
+	issues = f.findNotIntersectingIssues(issues)
 
-	if err = p.writeFixedFile(origFileLines, issues, tmpOutFile); err != nil {
+	if err = f.writeFixedFile(origFileLines, issues, tmpOutFile); err != nil {
 		tmpOutFile.Close()
 		_ = robustio.RemoveAll(tmpOutFile.Name())
 		return err
 	}
 
 	tmpOutFile.Close()
-
 	if err = robustio.Rename(tmpOutFile.Name(), filePath); err != nil {
 		_ = robustio.RemoveAll(tmpOutFile.Name())
 		return fmt.Errorf("failed to rename %s -> %s: %w", tmpOutFile.Name(), filePath, err)
@@ -124,7 +124,7 @@ func (p Fixer) fixIssuesInFile(filePath string, issues []result.Issue) error {
 	return nil
 }
 
-func (p Fixer) mergeLineIssues(lineNum int, lineIssues []result.Issue, origFileLines [][]byte) *result.Issue {
+func (f Fixer) mergeLineIssues(lineNum int, lineIssues []result.Issue, origFileLines [][]byte) *result.Issue {
 	origLine := origFileLines[lineNum-1] // lineNum is 1-based
 
 	if len(lineIssues) == 1 && lineIssues[0].Replacement.Inline == nil {
@@ -133,30 +133,28 @@ func (p Fixer) mergeLineIssues(lineNum int, lineIssues []result.Issue, origFileL
 
 	// check issues first
 	for ind := range lineIssues {
-		li := &lineIssues[ind]
-
-		if li.LineRange != nil {
-			p.log.Infof("Line %d has multiple issues but at least one of them is ranged: %#v", lineNum, lineIssues)
+		i := &lineIssues[ind]
+		if i.LineRange != nil {
+			f.log.Infof("Line %d has multiple issues but at least one of them is ranged: %#v", lineNum, lineIssues)
 			return &lineIssues[0]
 		}
 
-		inline := li.Replacement.Inline
-
-		if inline == nil || len(li.Replacement.NewLines) != 0 || li.Replacement.NeedOnlyDelete {
-			p.log.Infof("Line %d has multiple issues but at least one of them isn't inline: %#v", lineNum, lineIssues)
-			return li
+		r := i.Replacement
+		if r.Inline == nil || len(r.NewLines) != 0 || r.NeedOnlyDelete {
+			f.log.Infof("Line %d has multiple issues but at least one of them isn't inline: %#v", lineNum, lineIssues)
+			return &lineIssues[0]
 		}
 
-		if inline.StartCol < 0 || inline.Length <= 0 || inline.StartCol+inline.Length > len(origLine) {
-			p.log.Warnf("Line %d (%q) has invalid inline fix: %#v, %#v", lineNum, origLine, li, inline)
+		if r.Inline.StartCol < 0 || r.Inline.Length <= 0 || r.Inline.StartCol+r.Inline.Length > len(origLine) {
+			f.log.Warnf("Line %d (%q) has invalid inline fix: %#v, %#v", lineNum, origLine, i, r.Inline)
 			return nil
 		}
 	}
 
-	return p.applyInlineFixes(lineIssues, origLine, lineNum)
+	return f.applyInlineFixes(lineIssues, origLine, lineNum)
 }
 
-func (p Fixer) applyInlineFixes(lineIssues []result.Issue, origLine []byte, lineNum int) *result.Issue {
+func (f Fixer) applyInlineFixes(lineIssues []result.Issue, origLine []byte, lineNum int) *result.Issue {
 	sort.Slice(lineIssues, func(i, j int) bool {
 		return lineIssues[i].Replacement.Inline.StartCol < lineIssues[j].Replacement.Inline.StartCol
 	})
@@ -164,14 +162,14 @@ func (p Fixer) applyInlineFixes(lineIssues []result.Issue, origLine []byte, line
 	var newLineBuf bytes.Buffer
 	newLineBuf.Grow(len(origLine))
 
-	//nolint:misspell // misspelling is intentional
+	//nolint:misspell
 	// example: origLine="it's becouse of them", StartCol=5, Length=7, NewString="because"
 
 	curOrigLinePos := 0
 	for i := range lineIssues {
 		fix := lineIssues[i].Replacement.Inline
 		if fix.StartCol < curOrigLinePos {
-			p.log.Warnf("Line %d has multiple intersecting issues: %#v", lineNum, lineIssues)
+			f.log.Warnf("Line %d has multiple intersecting issues: %#v", lineNum, lineIssues)
 			return nil
 		}
 
@@ -192,7 +190,7 @@ func (p Fixer) applyInlineFixes(lineIssues []result.Issue, origLine []byte, line
 	return &mergedIssue
 }
 
-func (p Fixer) findNotIntersectingIssues(issues []result.Issue) []result.Issue {
+func (f Fixer) findNotIntersectingIssues(issues []result.Issue) []result.Issue {
 	sort.SliceStable(issues, func(i, j int) bool {
 		a, b := issues[i], issues[j]
 		return a.Line() < b.Line()
@@ -204,10 +202,10 @@ func (p Fixer) findNotIntersectingIssues(issues []result.Issue) []result.Issue {
 		issue := &issues[i]
 		rng := issue.GetLineRange()
 		if rng.From <= currentEnd {
-			p.log.Infof("Skip issue %#v: intersects with end %d", issue, currentEnd)
+			f.log.Infof("Skip issue %#v: intersects with end %d", issue, currentEnd)
 			continue // skip intersecting issue
 		}
-		p.log.Infof("Fix issue %#v with range %v", issue, issue.GetLineRange())
+		f.log.Infof("Fix issue %#v with range %v", issue, issue.GetLineRange())
 		ret = append(ret, *issue)
 		currentEnd = rng.To
 	}
@@ -215,7 +213,7 @@ func (p Fixer) findNotIntersectingIssues(issues []result.Issue) []result.Issue {
 	return ret
 }
 
-func (p Fixer) writeFixedFile(origFileLines [][]byte, issues []result.Issue, tmpOutFile *os.File) error {
+func (f Fixer) writeFixedFile(origFileLines [][]byte, issues []result.Issue, tmpOutFile *os.File) error {
 	// issues aren't intersecting
 
 	nextIssueIndex := 0
@@ -234,7 +232,7 @@ func (p Fixer) writeFixedFile(origFileLines [][]byte, issues []result.Issue, tmp
 			rng := nextIssue.GetLineRange()
 			if rng.From > rng.To {
 				// Maybe better decision is to skip such issues, re-evaluate if regressed.
-				p.log.Warnf("[fixer]: issue line range is probably invalid, fix can be incorrect (from=%d, to=%d, linter=%s)",
+				f.log.Warnf("[fixer]: issue line range is probably invalid, fix can be incorrect (from=%d, to=%d, linter=%s)",
 					rng.From, rng.To, nextIssue.FromLinter,
 				)
 			}
@@ -254,8 +252,4 @@ func (p Fixer) writeFixedFile(origFileLines [][]byte, issues []result.Issue, tmp
 	}
 
 	return nil
-}
-
-func (p Fixer) printStat() {
-	p.sw.PrintStages()
 }

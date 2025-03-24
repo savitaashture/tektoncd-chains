@@ -154,6 +154,10 @@ var secretsPatterns = [...]secretPattern{
 		regexp: regexp.MustCompile(`sk_live_[0-9a-zA-Z]{24}`),
 	},
 	{
+		name:   "Stripe API Key",
+		regexp: regexp.MustCompile(`sk_live_[0-9a-zA-Z]{24}`),
+	},
+	{
 		name:   "Stripe Restricted API Key",
 		regexp: regexp.MustCompile(`rk_live_[0-9a-zA-Z]{24}`),
 	},

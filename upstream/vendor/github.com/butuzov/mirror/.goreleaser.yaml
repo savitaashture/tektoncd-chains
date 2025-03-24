@@ -5,17 +5,33 @@ builds:
   - binary: mirror
     env:
     - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - 386
+      - arm64
+      - arm
+    goarm:
+      - 6
+    ignore:
+      - goos: windows
+        goarm: 6
+      - goos: windows
+        goarch: arm64
+      - goos: linux
+        goarm: 6
+      - goos: darwin
+        goarch: 386
     main: ./cmd/mirror/
     flags:
       - -trimpath
     ldflags: -s -w
-    goos:
-      - linux
-      - darwin
-      - windows
-    goarch:
-      - amd64
-      - arm64
+
+checksum:
+  name_template: 'checksums.txt'
 
 changelog:
   sort: asc
@@ -29,15 +45,14 @@ changelog:
       - Merge pull request
       - Merge branch
 
-
-checksum:
-  name_template: 'checksums.txt'
-
-
 archives:
-  - format: tar.gz
-    name_template: >-
-        {{ .ProjectName }}_{{- tolower .Os }}_{{ .Arch }}
+  - name_template: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if .Mips }}_{{ .Mips }}{{ end }}'
+    replacements:
+      darwin: darwin
+      linux: linux
+      windows: windows
+      386: i386
+      amd64: x86_64
     format_overrides:
       - goos: windows
         format: zip

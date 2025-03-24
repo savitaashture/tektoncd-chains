@@ -3,7 +3,8 @@ package linter
 import (
 	"context"
 
-	"github.com/golangci/golangci-lint/pkg/config"
+	"golang.org/x/tools/go/analysis"
+
 	"github.com/golangci/golangci-lint/pkg/result"
 )
 
@@ -14,47 +15,14 @@ type Linter interface {
 }
 
 type Noop struct {
-	name   string
-	desc   string
-	reason string
-	level  DeprecationLevel
-}
-
-func NewNoop(l Linter, reason string) Noop {
-	return Noop{
-		name:   l.Name(),
-		desc:   l.Desc(),
-		reason: reason,
-	}
-}
-
-func NewNoopDeprecated(name string, cfg *config.Config, level DeprecationLevel) Noop {
-	noop := Noop{
-		name:   name,
-		desc:   "Deprecated",
-		reason: "This linter is fully inactivated: it will not produce any reports.",
-		level:  level,
-	}
-
-	if cfg.InternalCmdTest {
-		noop.reason = ""
-	}
-
-	return noop
+	name string
+	desc string
+	run  func(pass *analysis.Pass) (any, error)
 }
 
 func (n Noop) Run(_ context.Context, lintCtx *Context) ([]result.Issue, error) {
-	if n.reason == "" {
-		return nil, nil
-	}
-
-	switch n.level {
-	case DeprecationError:
-		lintCtx.Log.Errorf("%s: %s", n.name, n.reason)
-	default:
-		lintCtx.Log.Warnf("%s: %s", n.name, n.reason)
-	}
-
+	lintCtx.Log.Warnf("%s is disabled because of generics."+
+		" You can track the evolution of the generics support by following the https://github.com/golangci/golangci-lint/issues/2649.", n.name)
 	return nil, nil
 }
 

@@ -197,7 +197,4 @@ var std = map[string]struct{}{
 	"maps":             {},
 	"slices":           {},
 	"testing/slogtest": {},
-	// added in Go v1.22 in compare to v1.21 (docker image)
-	"go/version":   {},
-	"math/rand/v2": {},
 }
