@@ -16,7 +16,7 @@ metadata:
       ".tekton/tektoncd-chains-1-15-controller-push.yaml".pathChanged())
   creationTimestamp: null
   labels:
-    appstudio.openshift.io/application: openshift-pipelines-1-15
+    appstudio.openshift.io/application: openshift-pipelines-core-1-15
     appstudio.openshift.io/component: tektoncd-chains-1-15-controller
     pipelines.appstudio.openshift.io/type: build
   name: tektoncd-chains-1-15-controller-on-push
