@@ -13,7 +13,7 @@ RUN go build -ldflags="-X 'knative.dev/pkg/changeset.rev=$(cat HEAD)'" -mod=vend
     ./cmd/controller
 
 FROM $RUNTIME
-ARG VERSION=chains-1.14.6
+ARG VERSION=chains-1.15.3
 
 ENV CONTROLLER=/usr/local/bin/controller \
     KO_APP=/ko-app \
