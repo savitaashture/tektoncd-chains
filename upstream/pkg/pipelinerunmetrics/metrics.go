@@ -119,11 +119,13 @@ func viewRegister() error {
 }
 
 func (r *Recorder) RecordCountMetrics(ctx context.Context, metricType string) {
+	logger.Infof("Starting RecordCountMetrics")
 	logger := logging.FromContext(ctx)
 	if !r.initialized {
 		logger.Errorf("Ignoring the metrics recording as recorder not initialized ")
 		return
 	}
+	logger.Infof("Starting switch statements")
 	switch mt := metricType; mt {
 	case chains.SignedMessagesCount:
 		r.countMetrics(ctx, sgCount)
@@ -136,6 +138,7 @@ func (r *Recorder) RecordCountMetrics(ctx context.Context, metricType string) {
 	default:
 		logger.Errorf("Ignoring the metrics recording as valid Metric type matching %v was not found", mt)
 	}
+	logger.Infof("End of switch statements")
 
 }
 
