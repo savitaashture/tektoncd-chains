@@ -38,7 +38,7 @@ Current features include:
 - Signing with a variety of cryptographic key types and services (x509, KMS)
 - Support for multiple storage backends for signatures
 
-### Installation
+### Installation on openshift
 
 Prerequisite: you'll need
 [Tekton Pipelines](https://github.com/tektoncd/pipeline/blob/main/docs/install.md)
@@ -61,6 +61,23 @@ To verify that installation was successful, wait until all Pods have Status
 
 ```shell
 kubectl get po -n tekton-chains --watch
+```
+
+```
+NAME                                       READY   STATUS      RESTARTS   AGE
+tekton-chains-controller-c4f7c57c4-nrjb2   1/1     Running     0          160m
+```
+
+### Installation on kubernetes
+
+Prerequisite: you'll need
+[Tekton Pipelines](https://github.com/tektoncd/pipeline/blob/main/docs/install.md)
+installed on your cluster before you install Chains.
+
+To install the latest version of Chains to your Kubernetes cluster, run:
+
+```shell
+kubectl apply --filename https://storage.googleapis.com/tekton-releases/chains/latest/release.yaml
 ```
 
 ```
