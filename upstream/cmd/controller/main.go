@@ -56,6 +56,7 @@ func main() {
 		// Remove any whitespace from the namespaces string and split it
 		namespaces = strings.Split(strings.ReplaceAll(*namespaceList, " ", ""), ",")
 		logger.Infof("controller is scoped to the following namespaces: %s\n", namespaces)
+		logger.Infof("controller is scoped and testing now")
 	}
 
 	if cfg.QPS == 0 {
@@ -66,7 +67,9 @@ func main() {
 	}
 
 	// Multiply by number of controllers
+	logger.Infof("setting cfg.QPS")
 	cfg.QPS = 2 * cfg.QPS
+	logger.Infof("setting cfg.Burst")
 	cfg.Burst = 2 * cfg.Burst
 
 	sharedmain.MainWithConfig(ctx, "watcher", cfg, taskrun.NewNamespacesScopedController(namespaces), pipelinerun.NewNamespacesScopedController(namespaces))
