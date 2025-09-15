@@ -126,8 +126,12 @@ def clone_docs_repo():
 
 def get_file_previews():
     previews = []
-    adoc_files = list(Path(".").rglob("*.adoc"))
-    for path in adoc_files:
+    # Look for both .adoc and .md documentation files
+    doc_files = []
+    doc_files.extend(list(Path(".").rglob("*.adoc")))
+    doc_files.extend(list(Path(".").rglob("*.md")))
+    
+    for path in doc_files:
         try:
             with open(path, encoding="utf-8") as f:
                 lines = f.readlines()[:10]  # Get first 10 lines (or fewer if file is short)
